@@ -435,8 +435,8 @@ def run(uplift_interval, d_ratio_exp):
     f = 0.7
     #d_ratio_exp = -8.0
     #w_ratio_exp = -8.0
-    plot_interval = 0.1
-    run_duration = 10.0
+    plot_interval = 10000.0
+    run_duration = 10000.0
     report_interval = 5.0  # report interval, in real-time seconds
     plot_every_transition = False
     #uplift_interval = 1e7
@@ -519,8 +519,8 @@ def run(uplift_interval, d_ratio_exp):
     k=0
 
     # Plot the initial grid
-    ca_plotter.update_plot()
-    axis('off')
+    #ca_plotter.update_plot()
+    #axis('off')
     #savefig(imagenm+str(k)+'.png')
     k+=1
 
@@ -540,13 +540,13 @@ def run(uplift_interval, d_ratio_exp):
             next_report = current_real_time + report_interval
 
         # Run the model forward in time until the next output step
-        ca.run(current_time+plot_interval, ca.node_state, 
-               plot_each_transition=plot_every_transition, plotter=ca_plotter)
+        ca.run(current_time+plot_interval, ca.node_state) #, 
+               #plot_each_transition=plot_every_transition, plotter=ca_plotter)
         current_time += plot_interval
 
         # Plot the current grid
-        ca_plotter.update_plot()
-        axis('off')
+        #ca_plotter.update_plot()
+        #axis('off')
         node_state_grid[hmg.number_of_node_rows-1] = 8
         #savefig(imagenm+str(k)+'.png')
         k+=1
@@ -556,31 +556,33 @@ def run(uplift_interval, d_ratio_exp):
             ca.update_link_states_and_transitions(current_time)
             next_uplift += uplift_interval
 
+    print('Finished with main loop')
 
     # FINALIZE
 
     # Plot
-    ca_plotter.finalize()
-    axis('off')
+    ca_plotter.update_plot()
+    #ca_plotter.finalize()
+    #axis('off')
     
-    (elev, soil) = get_profile_and_soil_thickness(hmg, node_state_grid)
+    #(elev, soil) = get_profile_and_soil_thickness(hmg, node_state_grid)
     #print elev
     #print soil
     
-    print 'Mean thickness:',mean(soil[75:])
+    #print 'Mean thickness:',mean(soil[75:])
     
-    x = 0.5*sqrt(3)*arange(nc)
+    #x = 0.5*sqrt(3)*arange(nc)
     
     # Calculate slope in upper half
-    (cf,cm1) = curve_fit(flin, x[75:], elev[75:])
-    slpgrad = cf[0]
-    slpdeg = 180.*arctan(slpgrad)/pi
-    print 'Upper slope gradient', slpgrad,'angle',slpdeg
+    #(cf,cm1) = curve_fit(flin, x[75:], elev[75:])
+    #slpgrad = cf[0]
+    #slpdeg = 180.*arctan(slpgrad)/pi
+    #print 'Upper slope gradient', slpgrad,'angle',slpdeg
     
     # Calculate (roughly) Laplacian
-    (pf,cm2) = curve_fit(fquad, x[75:], elev[75:] )
-    second_deriv = 2*pf[0]
-    print '2nd deriv',second_deriv
+    #(pf,cm2) = curve_fit(fquad, x[75:], elev[75:] )
+    #second_deriv = 2*pf[0]
+    #print '2nd deriv',second_deriv
     
     #savetxt(filenm, (elev,soil))
     #savetxt(filenm+'-ns', node_state_grid)
@@ -617,8 +619,8 @@ def main():
     #for w_exp in range(-4, 5, 4):
     #    for d_exp in range(-4, 5, 4):
      #       run(1e7, w_exp, d_exp)
-    for d in range(0, 1):
-        run(1e7, d)
+    #for d in range(0, 1):
+    run(10., 0.1)
 
 
 if __name__=='__main__':
