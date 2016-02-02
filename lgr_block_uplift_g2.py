@@ -24,370 +24,31 @@ from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
 from scipy.optimize import curve_fit
 import matplotlib
 
-def setup_transition_list(g=0.0, f=0.0, d=0.0, w=0.0):
+def add_weathering_and_disturbance_to_transition_list(xn_list, d=0.0, w=0.0):
     """
-    Creates and returns a list of Transition() objects to represent state
-    transitions for simple granular mechanics model.
+    Add transition rules representing weathering and/or grain disturbance
+    to the list, and return the list.
     
     Parameters
     ----------
-    (none)
+    xn_list : list of Transition objects
+        List of objects that encode information about the link-state 
+        transitions. Normally should first be initialized with lattice-grain
+        transition rules, then passed to this function to add rules for
+        weathering and disturbance.
+    d : float (optional)
+        Rate of transition (1/time) from fluid / resting grain pair to
+        mobile-grain / fluid pair, representing grain disturbance.
+    w : float (optional)
+        Rate of transition (1/time) from fluid / rock pair to
+        fluid / resting-grain pair, representing weathering.
+    
     
     Returns
     -------
     xn_list : list of Transition objects
-        List of objects that encode information about the link-state transitions.
-
-    Notes
-    -----
-    The transitions for this version of lattice gas have 11 pair-transition
-    rules. The shorthand for the states is as follows:
-
-        AR = air/empty
-        IN = incoming particle (moving toward its neighbor)
-        OU = outgoing particle (moving away from its neighbor)
-        IO = incoming at an oblique angle
-        OO = outgoing at an oblique angle
-        RE = rest particle
-        WA = wall particle
-        op = oblique pair moving in opposite perpendicular direction
-        sm = oblique pair moving in same perpendicular direction
-
-    The 11 pairs with transitions are:
-
-        1. AR-IN => IN-AR (move to empty particle)
-        2. IN-IN => OO-OO-op (1/3 each dir), OU-OU (1/3) (head-on collision)
-        3. IN-IO => OO-OU (oblique collision)
-        4. IN-OO => IO-OU (oblique collision from behind)
-        5. IN-OU => IO-OO (1/4 each of 2 directions) (collision from behind)
-        6. IN-RE => RE-OU (1/3) RE-OO (1/3 each dir) (collision with rest)
-        7. IN-WA => OU-WA (1/3) OO-WA (1/3 each dir) (wall collision)
-        8. IO-IO-op => OO-OO-op (1/2 each dir) (glacing collision)
-        9. IO-IO-sm => OO-OO-sm (30-degree collision)
-        10. IO-RE => RE-OU (oblique collision with rest particle)
-        11. IO-WA => OO-WA (oblique collision with wall)
+        Modified transition list.
     """
-    xn_list = []
-    
-    p_elast = 1.0-f  # probability of elastic (non-dissipative) collision
-
-    # Rule 1: Transitions for particle movement into an empty cell
-    xn_list.append( Transition((1,0,0), (0,1,0), 1., 'motion') )
-    xn_list.append( Transition((2,0,1), (0,2,1), 1., 'motion') )
-    xn_list.append( Transition((3,0,2), (0,3,2), 1., 'motion') )
-    xn_list.append( Transition((0,4,0), (4,0,0), 1., 'motion') )
-    xn_list.append( Transition((0,5,1), (5,0,1), 1., 'motion') )
-    xn_list.append( Transition((0,6,2), (6,0,2), 1., 'motion') )
-
-    # Rule 2: Transitions for head-on collision: elastic
-    xn_list.append( Transition((1,4,0), (4,1,0), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((1,4,0), (3,6,0), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((1,4,0), (5,2,0), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((2,5,1), (5,2,1), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((2,5,1), (4,1,1), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((2,5,1), (6,3,1), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((3,6,2), (6,3,2), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((3,6,2), (1,4,2), p_elast/3, 'head-on collision') )
-    xn_list.append( Transition((3,6,2), (5,2,2), p_elast/3, 'head-on collision') )
-
-    # Rule 2: Transitions for head-on collision: frictional dissipation
-    xn_list.append( Transition((1,4,0), (7,7,0), f, 'head-on collision') )
-    xn_list.append( Transition((2,5,1), (7,7,1), f, 'head-on collision') )
-    xn_list.append( Transition((3,6,2), (7,7,2), f, 'head-on collision') )
-
-    # Rule 3: Transitions for oblique collision: elastic
-    xn_list.append( Transition((1,3,0), (3,1,0), p_elast, 'oblique collision') )
-    xn_list.append( Transition((1,5,0), (5,1,0), p_elast, 'oblique collision') )
-    xn_list.append( Transition((2,4,0), (4,2,0), p_elast, 'oblique collision') )
-    xn_list.append( Transition((6,4,0), (4,6,0), p_elast, 'oblique collision') )
-    xn_list.append( Transition((2,4,1), (4,2,1), p_elast, 'oblique collision') )
-    xn_list.append( Transition((2,6,1), (6,2,1), p_elast, 'oblique collision') )
-    xn_list.append( Transition((1,5,1), (5,1,1), p_elast, 'oblique collision') )
-    xn_list.append( Transition((3,5,1), (5,3,1), p_elast, 'oblique collision') )
-    xn_list.append( Transition((3,1,2), (1,3,2), p_elast, 'oblique collision') )
-    xn_list.append( Transition((3,5,2), (5,3,2), p_elast, 'oblique collision') )
-    xn_list.append( Transition((2,6,2), (6,2,2), p_elast, 'oblique collision') )
-    xn_list.append( Transition((4,6,2), (6,4,2), p_elast, 'oblique collision') )
-
-    # Rule 3 frictional
-    xn_list.append( Transition((1,3,0), (7,7,0), f, 'oblique collision') )
-    xn_list.append( Transition((1,5,0), (7,7,0), f, 'oblique collision') )
-    xn_list.append( Transition((2,4,0), (7,7,0), f, 'oblique collision') )
-    xn_list.append( Transition((6,4,0), (7,7,0), f, 'oblique collision') )
-    xn_list.append( Transition((2,4,1), (7,7,1), f, 'oblique collision') )
-    xn_list.append( Transition((2,6,1), (7,7,1), f, 'oblique collision') )
-    xn_list.append( Transition((1,5,1), (7,7,1), f, 'oblique collision') )
-    xn_list.append( Transition((3,5,1), (7,7,1), f, 'oblique collision') )
-    xn_list.append( Transition((3,1,2), (7,7,2), f, 'oblique collision') )
-    xn_list.append( Transition((3,5,2), (7,7,2), f, 'oblique collision') )
-    xn_list.append( Transition((2,6,2), (7,7,2), f, 'oblique collision') )
-    xn_list.append( Transition((4,6,2), (7,7,2), f, 'oblique collision') )
-
-    # Rule 4: Transitions for oblique-from-behind collisions
-    xn_list.append( Transition((1,2,0), (2,1,0), p_elast, 'oblique') )
-    xn_list.append( Transition((1,6,0), (6,1,0), p_elast, 'oblique') )
-    xn_list.append( Transition((3,4,0), (4,3,0), p_elast, 'oblique') )
-    xn_list.append( Transition((5,4,0), (4,5,0), p_elast, 'oblique') )
-    xn_list.append( Transition((2,1,1), (1,2,1), p_elast, 'oblique') )
-    xn_list.append( Transition((2,3,1), (3,2,1), p_elast, 'oblique') )
-    xn_list.append( Transition((4,5,1), (5,4,1), p_elast, 'oblique') )
-    xn_list.append( Transition((6,5,1), (5,6,1), p_elast, 'oblique') )
-    xn_list.append( Transition((3,2,2), (2,3,2), p_elast, 'oblique') )
-    xn_list.append( Transition((3,4,2), (4,3,2), p_elast, 'oblique') )
-    xn_list.append( Transition((1,6,2), (6,1,2), p_elast, 'oblique') )
-    xn_list.append( Transition((5,6,2), (6,5,2), p_elast, 'oblique') )
-
-    # Rule 4 frictional
-    xn_list.append( Transition((1,2,0), (7,1,0), f, 'oblique') )
-    xn_list.append( Transition((1,6,0), (7,1,0), f, 'oblique') )
-    xn_list.append( Transition((3,4,0), (4,7,0), f, 'oblique') )
-    xn_list.append( Transition((5,4,0), (4,7,0), f, 'oblique') )
-    xn_list.append( Transition((2,1,1), (7,2,1), f, 'oblique') )
-    xn_list.append( Transition((2,3,1), (7,2,1), f, 'oblique') )
-    xn_list.append( Transition((4,5,1), (5,7,1), f, 'oblique') )
-    xn_list.append( Transition((6,5,1), (5,7,1), f, 'oblique') )
-    xn_list.append( Transition((3,2,2), (7,3,2), f, 'oblique') )
-    xn_list.append( Transition((3,4,2), (7,3,2), f, 'oblique') )
-    xn_list.append( Transition((1,6,2), (6,7,2), f, 'oblique') )
-    xn_list.append( Transition((5,6,2), (6,7,2), f, 'oblique') )
-   
-    # Rule 5: Transitions for direct-from-behind collisions
-    xn_list.append( Transition((1,1,0), (2,6,0), p_elast/4, 'behind') )
-    xn_list.append( Transition((1,1,0), (6,2,0), p_elast/4, 'behind') )
-    xn_list.append( Transition((4,4,0), (3,5,0), p_elast/4, 'behind') )
-    xn_list.append( Transition((4,4,0), (5,3,0), p_elast/4, 'behind') )
-    xn_list.append( Transition((2,2,1), (1,3,1), p_elast/4, 'behind') )
-    xn_list.append( Transition((2,2,1), (3,1,1), p_elast/4, 'behind') )
-    xn_list.append( Transition((5,5,1), (4,6,1), p_elast/4, 'behind') )
-    xn_list.append( Transition((5,5,1), (6,4,1), p_elast/4, 'behind') )
-    xn_list.append( Transition((3,3,2), (2,4,2), p_elast/4, 'behind') )
-    xn_list.append( Transition((3,3,2), (4,2,2), p_elast/4, 'behind') )
-    xn_list.append( Transition((6,6,2), (1,5,2), p_elast/4, 'behind') )
-    xn_list.append( Transition((6,6,2), (5,1,2), p_elast/4, 'behind') )
-
-    # Rule 5 frictional
-    xn_list.append( Transition((1,1,0), (7,1,0), f/4, 'behind') )
-    xn_list.append( Transition((4,4,0), (4,7,0), f/4, 'behind') )
-    xn_list.append( Transition((2,2,1), (7,2,1), f/4, 'behind') )
-    xn_list.append( Transition((5,5,1), (5,7,1), f/4, 'behind') )
-    xn_list.append( Transition((3,3,2), (7,3,2), f/4, 'behind') )
-    xn_list.append( Transition((6,6,2), (6,7,2), f/4, 'behind') )
-
-    # Rule 6: Transitions for direct collision with stationary (resting) particle
-    xn_list.append( Transition((1,7,0), (7,1,0), p_elast/3., 'rest') )
-    xn_list.append( Transition((1,7,0), (7,2,0), p_elast/3., 'rest') )
-    xn_list.append( Transition((1,7,0), (7,6,0), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,4,0), (4,7,0), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,4,0), (3,7,0), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,4,0), (5,7,0), p_elast/3., 'rest') )
-    xn_list.append( Transition((2,7,1), (7,2,1), p_elast/3., 'rest') )
-    xn_list.append( Transition((2,7,1), (7,1,1), p_elast/3., 'rest') )
-    xn_list.append( Transition((2,7,1), (7,3,1), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,5,1), (5,7,1), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,5,1), (4,7,1), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,5,1), (6,7,1), p_elast/3., 'rest') )
-    xn_list.append( Transition((3,7,2), (7,3,2), p_elast/3., 'rest') )
-    xn_list.append( Transition((3,7,2), (7,2,2), p_elast/3., 'rest') )
-    xn_list.append( Transition((3,7,2), (7,4,2), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,6,2), (6,7,2), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,6,2), (1,7,2), p_elast/3., 'rest') )
-    xn_list.append( Transition((7,6,2), (5,7,2), p_elast/3., 'rest') )
-
-    # Rule 6 frictionl
-    xn_list.append( Transition((1,7,0), (7,7,0), f, 'rest') )
-    xn_list.append( Transition((7,4,0), (7,7,0), f, 'rest') )
-    xn_list.append( Transition((2,7,1), (7,7,1), f, 'rest') )
-    xn_list.append( Transition((7,5,1), (7,7,1), f, 'rest') )
-    xn_list.append( Transition((3,7,2), (7,7,2), f, 'rest') )
-    xn_list.append( Transition((7,6,2), (7,7,2), f, 'rest') )
-
-    # Rule 7: Transitions for wall impact
-    xn_list.append( Transition((1,8,0), (4,8,0), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((1,8,0), (3,8,0), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((1,8,0), (5,8,0), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((2,8,1), (5,8,1), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((2,8,1), (4,8,1), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((2,8,1), (6,8,1), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((3,8,2), (6,8,2), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((3,8,2), (5,8,2), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((3,8,2), (1,8,2), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,4,0), (8,1,0), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,4,0), (8,6,0), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,4,0), (8,2,0), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,5,1), (8,1,1), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,5,1), (8,2,1), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,5,1), (8,3,1), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,6,2), (8,2,2), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,6,2), (8,3,2), p_elast/3, 'wall rebound') )
-    xn_list.append( Transition((8,6,2), (8,4,2), p_elast/3, 'wall rebound') )
-
-    # Rule 7 frictional
-    xn_list.append( Transition((1,8,0), (7,8,0), f, 'wall rebound') )
-    xn_list.append( Transition((2,8,1), (7,8,1), f, 'wall rebound') )
-    xn_list.append( Transition((3,8,2), (7,8,2), f, 'wall rebound') )
-    xn_list.append( Transition((8,4,0), (8,7,0), f, 'wall rebound') )
-    xn_list.append( Transition((8,5,1), (8,7,1), f, 'wall rebound') )
-    xn_list.append( Transition((8,6,2), (8,7,2), f, 'wall rebound') )
-
-    # Rule 8: Transitions for glancing oblique collision
-    xn_list.append( Transition((2,5,0), (3,6,0), p_elast, 'glancing') )
-    xn_list.append( Transition((6,3,0), (5,2,0), p_elast, 'glancing') )
-    xn_list.append( Transition((3,6,1), (4,1,1), p_elast, 'glancing') )
-    xn_list.append( Transition((1,4,1), (6,3,1), p_elast, 'glancing') )
-    xn_list.append( Transition((4,1,2), (5,2,2), p_elast, 'glancing') )
-    xn_list.append( Transition((2,5,2), (1,4,2), p_elast, 'glancing') )
-    
-    # Rule 8 frictional
-    xn_list.append( Transition((2,5,0), (7,7,0), f, 'glancing') )
-    xn_list.append( Transition((6,3,0), (7,7,0), f, 'glancing') )
-    xn_list.append( Transition((3,6,1), (7,7,1), f, 'glancing') )
-    xn_list.append( Transition((1,4,1), (7,7,1), f, 'glancing') )
-    xn_list.append( Transition((4,1,2), (7,7,2), f, 'glancing') )
-    xn_list.append( Transition((2,5,2), (7,7,2), f, 'glancing') )
-
-    # Rule 9: Transitions for "near-on" collisions
-    xn_list.append( Transition((6,5,0), (5,6,0), p_elast, 'near-on') )
-    xn_list.append( Transition((2,3,0), (3,2,0), p_elast, 'near-on') )
-    xn_list.append( Transition((1,6,1), (6,1,1), p_elast, 'near-on') )
-    xn_list.append( Transition((3,4,1), (4,3,1), p_elast, 'near-on') )
-    xn_list.append( Transition((2,1,2), (1,2,2), p_elast, 'near-on') )
-    xn_list.append( Transition((4,5,2), (5,4,2), p_elast, 'near-on') )
-    
-    # Rule 9 frictional
-    xn_list.append( Transition((6,5,0), (7,6,0), f/2, 'near-on') )
-    xn_list.append( Transition((6,5,0), (5,7,0), f/2, 'near-on') )
-    xn_list.append( Transition((2,3,0), (7,2,0), f/2, 'near-on') )
-    xn_list.append( Transition((2,3,0), (3,7,0), f/2, 'near-on') )
-    xn_list.append( Transition((1,6,1), (7,1,1), f/2, 'near-on') )
-    xn_list.append( Transition((1,6,1), (6,7,1), f/2, 'near-on') )
-    xn_list.append( Transition((3,4,1), (7,3,1), f/2, 'near-on') )
-    xn_list.append( Transition((3,4,1), (4,7,1), f/2, 'near-on') )
-    xn_list.append( Transition((2,1,2), (7,2,2), f/2, 'near-on') )
-    xn_list.append( Transition((2,1,2), (1,7,2), f/2, 'near-on') )
-    xn_list.append( Transition((4,5,2), (7,4,2), f/2, 'near-on') )
-    xn_list.append( Transition((4,5,2), (5,7,2), f/2, 'near-on') )
-    
-    # Rule 10: Transitions for oblique collision with rest particle
-    xn_list.append( Transition((2,7,0), (7,1,0), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((6,7,0), (7,1,0), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((7,3,0), (4,7,0), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((7,5,0), (4,7,0), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((3,7,1), (7,2,1), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((1,7,1), (7,2,1), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((7,6,1), (5,7,1), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((7,4,1), (5,7,1), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((4,7,2), (7,3,2), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((2,7,2), (7,3,2), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((7,5,2), (6,7,2), p_elast, 'oblique with rest') )
-    xn_list.append( Transition((7,1,2), (6,7,2), p_elast, 'oblique with rest') )
-
-    # Rule 10 frictional
-    xn_list.append( Transition((2,7,0), (7,7,0), f, 'oblique with rest') )
-    xn_list.append( Transition((6,7,0), (7,7,0), f, 'oblique with rest') )
-    xn_list.append( Transition((7,3,0), (7,7,0), f, 'oblique with rest') )
-    xn_list.append( Transition((7,5,0), (7,7,0), f, 'oblique with rest') )
-    xn_list.append( Transition((3,7,1), (7,7,1), f, 'oblique with rest') )
-    xn_list.append( Transition((1,7,1), (7,7,1), f, 'oblique with rest') )
-    xn_list.append( Transition((7,6,1), (7,7,1), f, 'oblique with rest') )
-    xn_list.append( Transition((7,4,1), (7,7,1), f, 'oblique with rest') )
-    xn_list.append( Transition((4,7,2), (7,7,2), f, 'oblique with rest') )
-    xn_list.append( Transition((2,7,2), (7,7,2), f, 'oblique with rest') )
-    xn_list.append( Transition((7,5,2), (7,7,2), f, 'oblique with rest') )
-    xn_list.append( Transition((7,1,2), (7,7,2), f, 'oblique with rest') )
-
-    # Rule 11: Transitions for oblique collision with wall particle
-    xn_list.append( Transition((2,8,0), (3,8,0), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((6,8,0), (5,8,0), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((8,3,0), (8,2,0), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((8,5,0), (8,6,0), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((1,8,1), (6,8,1), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((3,8,1), (4,8,1), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((8,4,1), (8,3,1), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((8,6,1), (8,1,1), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((4,8,2), (5,8,2), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((2,8,2), (1,8,2), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((8,1,2), (8,2,2), p_elast, 'oblique with wall') )
-    xn_list.append( Transition((8,5,2), (8,4,2), p_elast, 'oblique with wall') )
-
-    # Rule 11 frictional
-    xn_list.append( Transition((2,8,0), (7,8,0), f, 'oblique with wall') )
-    xn_list.append( Transition((6,8,0), (7,8,0), f, 'oblique with wall') )
-    xn_list.append( Transition((8,3,0), (8,7,0), f, 'oblique with wall') )
-    xn_list.append( Transition((8,5,0), (8,7,0), f, 'oblique with wall') )
-    xn_list.append( Transition((1,8,1), (7,8,1), f, 'oblique with wall') )
-    xn_list.append( Transition((3,8,1), (7,8,1), f, 'oblique with wall') )
-    xn_list.append( Transition((8,4,1), (8,7,1), f, 'oblique with wall') )
-    xn_list.append( Transition((8,6,1), (8,7,1), f, 'oblique with wall') )
-    xn_list.append( Transition((4,8,2), (7,8,2), f, 'oblique with wall') )
-    xn_list.append( Transition((2,8,2), (7,8,2), f, 'oblique with wall') )
-    xn_list.append( Transition((8,1,2), (8,7,2), f, 'oblique with wall') )
-    xn_list.append( Transition((8,5,2), (8,7,2), f, 'oblique with wall') )
-
-    # Gravity rule 1: rising particles become rest particles
-    xn_list.append( Transition((0,1,0), (0,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((1,1,0), (1,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((2,1,0), (2,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((3,1,0), (3,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((4,1,0), (4,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((5,1,0), (5,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((6,1,0), (6,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((7,1,0), (7,7,0), g, 'gravity 1') )
-    xn_list.append( Transition((8,1,0), (8,7,0), g, 'gravity 1') )
-
-    # Gravity rule 2: resting particles become falling particles (if not above
-    # rest or wall?)
-    xn_list.append( Transition((0,7,0), (0,4,0), g, 'gravity 2') )
-    xn_list.append( Transition((1,7,0), (1,4,0), g, 'gravity 2') )
-    xn_list.append( Transition((2,7,0), (2,4,0), g, 'gravity 2') )
-    xn_list.append( Transition((3,7,0), (3,4,0), g, 'gravity 2') )
-    xn_list.append( Transition((4,7,0), (4,4,0), g, 'gravity 2') )
-    xn_list.append( Transition((5,7,0), (5,4,0), g, 'gravity 2') )
-    xn_list.append( Transition((6,7,0), (6,4,0), g, 'gravity 2') )
-
-    # Gravity rule 3: up/sideways particles become down/sideways particles
-    xn_list.append( Transition((0,2,0), (0,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((1,2,0), (1,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((2,2,0), (2,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((3,2,0), (3,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((4,2,0), (4,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((5,2,0), (5,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((6,2,0), (6,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((7,2,0), (7,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((8,2,0), (8,3,0), g, 'gravity 3') )
-    xn_list.append( Transition((0,6,0), (0,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((1,6,0), (1,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((2,6,0), (2,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((3,6,0), (3,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((4,6,0), (4,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((5,6,0), (5,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((6,6,0), (6,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((7,6,0), (7,5,0), g, 'gravity 3') )
-    xn_list.append( Transition((8,6,0), (8,5,0), g, 'gravity 3') )
-    
-    # Gravity rule 4: down/side to straight down
-    xn_list.append( Transition((0,3,0), (0,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((1,3,0), (1,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((2,3,0), (2,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((3,3,0), (3,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((4,3,0), (4,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((5,3,0), (5,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((6,3,0), (6,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((7,3,0), (7,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((8,3,0), (8,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((0,5,0), (0,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((1,5,0), (1,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((2,5,0), (2,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((3,5,0), (3,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((4,5,0), (4,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((5,5,0), (5,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((6,5,0), (6,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((7,5,0), (7,4,0), g, 'gravity 4') )
-    xn_list.append( Transition((8,5,0), (8,4,0), g, 'gravity 4') )
-    
-    # Uncertain gravity rule!
-    xn_list.append( Transition((7,0,2), (3,0,2), g/2.0, 'gravity') )
-    xn_list.append( Transition((0,7,1), (0,5,1), g/2.0, 'gravity') )
-    
     
     # Disturbance rule
     xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
@@ -404,7 +65,7 @@ def setup_transition_list(g=0.0, f=0.0, d=0.0, w=0.0):
             print '  From state',t.from_state,'to state',t.to_state,'at rate',t.rate,'called',t.name
         
     return xn_list
-    
+
     
 def get_profile_and_soil_thickness(grid, data):
     
@@ -450,31 +111,11 @@ def run(uplift_interval, d): #d_ratio_exp):
 
     # INITIALIZE
 
-    # User-defined parameters
-    nr = 113
-    nc = 127
-    g = 1.0
-    f = 0.7
-    #d_ratio_exp = -8.0
-    #w_ratio_exp = -8.0
-    plot_interval = 1.0e9
-    output_interval = 1.0e99
-    run_duration = 1.0e10
-    report_interval = 5.0  # report interval, in real-time seconds
-    plot_every_transition = False
     #uplift_interval = 1e7
 
     #filenm = 'test_output'
     #imagenm = 'Hill141213/hill'+str(int(d_ratio_exp))+'d'
     
-    # Calculate d and w
-    upliftrate = sqrt(3)/uplift_interval
-    #w = (2.0**w_ratio_exp)*sliprate
-    #d = (2.0**d_ratio_exp)*upliftrate
-    print 'RUNNING u=', upliftrate, 'd=', d
-    print 'with 10 cm cells, U = ', upliftrate*3600*24*365.25*0.1, ' m/yr'
-    print 'Duration =', run_duration/(3600*24*365.25), 'yrs'
-    print 'Cumulative rock uplift over run =', upliftrate*run_duration,'cells, or', upliftrate*run_duration*0.1, 'm'
     
     # Remember the clock time, and calculate when we next want to report
     # progress.
@@ -669,13 +310,63 @@ def run(uplift_interval, d): #d_ratio_exp):
     #print n_down/(n_up+n_down)
 
 
+def get_params():
+    """Set and return the various model parameters."""
+
+    params = {}
+    params['num_rows'] = 113
+    params['num_cols'] = 127
+    params['grav_transition_rate'] = 1.0
+    params['fric_transition_rate'] = 0.7
+    params['plot_interval'] = 1.0e9
+    params['output_interval'] = 1.0e99
+    params['run_duration'] = 1.0e10
+    params['report_interval'] = 5.0  # report interval, in real-time seconds
+    params['plot_every_transition'] = False
+    params['uplift_interval_yrs'] = 0.01
+    params['uplift_interval'] = \
+        params['uplift_interval_yrs'] / (3600 * 24 * 365.25)
+    params['cell_size'] = 0.1
+    params['disturbance_rate'] = 100.0 / (3600 * 24 * 365.25)
+
+    return params
+    
+    
+def report_run_params(params):
+    """Display on screen some basic information about the run."""
+    spy = 3600 * 24 * 365.25  # number of seconds in a year
+    print('Parameters for this run:')
+    print('  Baselevel rate: ' + \
+        str(params['cell_size'] / params['uplift_interval_yrs']) + ' m/yr')
+    print('  Disturbance rate: ' + \
+        str(params['disturbance_rate'] * spy) + ' events/yr = ' + \
+        str(params['disturbance_rate']) + ' events/s = ' + \
+        str(params['cell_size'] * params['disturbance_rate'] * spy) + \
+        ' m/yr = ' + \
+        str(params['cell_size'] * params['disturbance_rate']) + 'm/s')
+    print('  Dimensionless disturbance rate: ' + \
+        str(params['disturbance_rate'] * params['uplift_interval']))
+
+
+def initialize():
+    """Initialize the model."""
+    
+    params = get_params()
+    report_run_params(params)
+
+def run_model():
+    """Initialize, run, and finalize the hillslope model."""
+    initialize()
+    
+
 def main():
     
     #for w_exp in range(-4, 5, 4):
     #    for d_exp in range(-4, 5, 4):
      #       run(1e7, w_exp, d_exp)
     #for d in range(0, 1):
-    run(1.0e9, 1.0e-8)
+    #run(1.0e9, 1.0e-8)
+    run_model()
 
 
 if __name__=='__main__':
