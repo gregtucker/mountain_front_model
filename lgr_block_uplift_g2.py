@@ -1,6 +1,13 @@
 #!/usr/env/python
 """
 Hillslope model with block uplift.
+
+TODO NOTES:
+- get a realistic set of parms to play with
+- clean up the code to make it "externally runnable"
+- make a master run script
+- start a matrix of runs exploring different u, d, and L
+- while that's going, do some profiling to find speed bottlenecks
 """
 
 _DEBUG = False
@@ -10,6 +17,7 @@ import time
 from numpy import zeros, bincount, arange, savetxt, sqrt, log10, mean, arctan, pi
 from pylab import subplots, plot, show, xlabel, ylabel, title, axis, figure, clf, savefig
 from landlab import HexModelGrid
+from landlab.io.netcdf import write_netcdf
 from landlab.ca.celllab_cts import Transition, CAPlotter
 from landlab.ca.oriented_hex_cts import OrientedHexCTS
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
@@ -377,10 +385,18 @@ def setup_transition_list(g=0.0, f=0.0, d=0.0, w=0.0):
     xn_list.append( Transition((8,5,0), (8,4,0), g, 'gravity 4') )
     
     # Uncertain gravity rule!
-    xn_list.append( Transition((7,0,2), (3,0,2), g/2.0, 'gravity??') )
-    xn_list.append( Transition((0,7,1), (0,5,1), g/2.0, 'gravity??') )
+    xn_list.append( Transition((7,0,2), (3,0,2), g/2.0, 'gravity') )
+    xn_list.append( Transition((0,7,1), (0,5,1), g/2.0, 'gravity') )
     
     
+    # Disturbance rule
+    xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
+    xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
+    xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
+    xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
+    xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
+    xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
+
     if _DEBUG:
         print
         print 'setup_transition_list(): list has',len(xn_list),'transitions:'
@@ -424,34 +440,41 @@ def fquad(x, a, b, c):
     return a*x*x+b*x+c
     
     
-def run(uplift_interval, d_ratio_exp):
+def write_output(grid, outfilename, iteration):
+    """Write output to file (currently netCDF)."""
+    filename = outfilename + str(iteration).zfill(4) + '.nc'
+    write_netcdf(filename, grid)
+
+    
+def run(uplift_interval, d): #d_ratio_exp):
 
     # INITIALIZE
 
     # User-defined parameters
-    nr = 81
-    nc = 151
+    nr = 113
+    nc = 127
     g = 1.0
     f = 0.7
     #d_ratio_exp = -8.0
     #w_ratio_exp = -8.0
-    plot_interval = 10000.0
-    run_duration = 10000.0
+    plot_interval = 1.0e9
+    output_interval = 1.0e99
+    run_duration = 1.0e10
     report_interval = 5.0  # report interval, in real-time seconds
     plot_every_transition = False
     #uplift_interval = 1e7
-    #filenm = 'Hill141213/h141213'
+
+    #filenm = 'test_output'
     #imagenm = 'Hill141213/hill'+str(int(d_ratio_exp))+'d'
     
     # Calculate d and w
     upliftrate = sqrt(3)/uplift_interval
     #w = (2.0**w_ratio_exp)*sliprate
-    d = (2.0**d_ratio_exp)*upliftrate
+    #d = (2.0**d_ratio_exp)*upliftrate
     print 'RUNNING u=', upliftrate, 'd=', d
-    
-    # Assemble the file name
-    #filenm = filenm+'u'+str(int(log10(uplift_interval)))+'d'+str(int(d_ratio_exp))
-    #print filenm
+    print 'with 10 cm cells, U = ', upliftrate*3600*24*365.25*0.1, ' m/yr'
+    print 'Duration =', run_duration/(3600*24*365.25), 'yrs'
+    print 'Cumulative rock uplift over run =', upliftrate*run_duration,'cells, or', upliftrate*run_duration*0.1, 'm'
     
     # Remember the clock time, and calculate when we next want to report
     # progress.
@@ -480,18 +503,29 @@ def run(uplift_interval, d_ratio_exp):
                 7 : 'rest',
                 8 : 'wall'}
     xn_list = setup_transition_list(g, f, d)
+    #xn_list = []
+    #xn_list.append( Transition((0,1,0), (0,7,0), g, 'gravity 1') )
+
 
     # Create data and initialize values.
     node_state_grid = hmg.add_zeros('node', 'node_state_grid', dtype=int)
 
     # Lower rows get resting particles
+    if nc % 2 == 0:  # if even num cols, bottom right is...
+        bottom_right = nc - 1
+    else:
+        bottom_right = nc // 2
+    right_side_x = 0.866025403784 * (nc - 1)
     for i in range(hmg.number_of_nodes):
-        if hmg.node_y[i]< 2.0 and hmg.node_x[i]>0.0:
-            node_state_grid[i] = 7
+        if hmg.node_y[i] < 3.0:
+            if hmg.node_x[i] > 0.0 and hmg.node_x[i] < right_side_x:
+                node_state_grid[i] = 7
         #elif hmg.node_x[i]>((nc-1)*0.866):
         #    node_state_grid[i] = 8
-    #node_state_grid[0] = 8
-    node_state_grid[hmg.number_of_node_rows-1] = 8
+    node_state_grid[0] = 8  # bottom left
+    node_state_grid[bottom_right] = 8
+    #for i in range(hmg.number_of_nodes):
+    #    print i, hmg.node_x[i], hmg.node_y[i], node_state_grid[i]
 
     # Create an uplift object
     uplifter = LatticeUplifter(hmg, node_state_grid)
@@ -507,7 +541,7 @@ def run(uplift_interval, d_ratio_exp):
     #sky = '#CBD5E1'
     #sky = '#85A5CC'
     sky = '#D0E4F2'
-    rock = sky
+    rock = '#000000' #sky
     mob = '#D98859'
     #mob = '#DB764F'
     #mob = '#FFFF00'
@@ -519,19 +553,32 @@ def run(uplift_interval, d_ratio_exp):
     k=0
 
     # Plot the initial grid
-    #ca_plotter.update_plot()
-    #axis('off')
+    ca_plotter.update_plot()
+    axis('off')
     #savefig(imagenm+str(k)+'.png')
     k+=1
+    
+    # Write output for initial grid
+    #write_output(hmg, filenm, 0)
+    #output_iteration = 1
 
     # Create an array to store the numbers of states at each plot interval
     #nstates = zeros((9, int(run_duration/plot_interval)))
     #k = 0
 
+    # Work out the next times to plot and output
+    next_output = output_interval
+    next_plot = plot_interval
+
     # RUN
     current_time = 0.0
     while current_time < run_duration:
         
+        # Figure out what time to run to this iteration
+        next_pause = min(next_output, next_plot)
+        next_pause = min(next_pause, next_uplift)
+        next_pause = min(next_pause, run_duration)
+
         # Once in a while, print out simulation and real time to let the user
         # know that the sim is running ok
         current_real_time = time.time()
@@ -540,17 +587,25 @@ def run(uplift_interval, d_ratio_exp):
             next_report = current_real_time + report_interval
 
         # Run the model forward in time until the next output step
-        ca.run(current_time+plot_interval, ca.node_state) #, 
+        print('Running to...' + str(next_pause))
+        ca.run(next_pause, ca.node_state) #, 
                #plot_each_transition=plot_every_transition, plotter=ca_plotter)
-        current_time += plot_interval
+        current_time = next_pause
+        
+        # Handle output to file
+        if current_time >= next_output:
+            #write_output(hmg, filenm, output_iteration)
+            #output_iteration += 1
+            next_output += output_interval
+            
+        # Handle plotting on display
+        if current_time >= next_plot:
+            #node_state_grid[hmg.number_of_node_rows-1] = 8
+            ca_plotter.update_plot()
+            axis('off')
+            next_plot += plot_interval
 
-        # Plot the current grid
-        #ca_plotter.update_plot()
-        #axis('off')
-        node_state_grid[hmg.number_of_node_rows-1] = 8
-        #savefig(imagenm+str(k)+'.png')
-        k+=1
-
+        # Handle uplift
         if current_time >= next_uplift:
             uplifter.uplift_interior_nodes(rock_state=7)
             ca.update_link_states_and_transitions(current_time)
@@ -561,10 +616,10 @@ def run(uplift_interval, d_ratio_exp):
     # FINALIZE
 
     # Plot
-    ca_plotter.update_plot()
+    #ca_plotter.update_plot()
     #ca_plotter.finalize()
     #axis('off')
-    
+
     #(elev, soil) = get_profile_and_soil_thickness(hmg, node_state_grid)
     #print elev
     #print soil
@@ -620,7 +675,7 @@ def main():
     #    for d_exp in range(-4, 5, 4):
      #       run(1e7, w_exp, d_exp)
     #for d in range(0, 1):
-    run(10., 0.1)
+    run(1.0e9, 1.0e-8)
 
 
 if __name__=='__main__':
