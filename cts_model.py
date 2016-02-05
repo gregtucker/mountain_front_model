@@ -25,132 +25,73 @@ from scipy.optimize import curve_fit
 import matplotlib
 
 
-def add_weathering_and_disturbance_to_transition_list(xn_list, d=0.0, w=0.0):
+class CTSModel(object):
     """
-    Add transition rules representing weathering and/or grain disturbance
-    to the list, and return the list.
-    
-    Parameters
-    ----------
-    xn_list : list of Transition objects
-        List of objects that encode information about the link-state 
-        transitions. Normally should first be initialized with lattice-grain
-        transition rules, then passed to this function to add rules for
-        weathering and disturbance.
-    d : float (optional)
-        Rate of transition (1/time) from fluid / resting grain pair to
-        mobile-grain / fluid pair, representing grain disturbance.
-    w : float (optional)
-        Rate of transition (1/time) from fluid / rock pair to
-        fluid / resting-grain pair, representing weathering.
-    
-    
-    Returns
-    -------
-    xn_list : list of Transition objects
-        Modified transition list.
-    """
-    
-    # Disturbance rule
-    xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
-    xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
-    xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
-    xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
-    xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
-    xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
+    Implement a generic CellLab-CTS model.
 
-    if _DEBUG:
-        print
-        print 'setup_transition_list(): list has',len(xn_list),'transitions:'
-        for t in xn_list:
-            print '  From state',t.from_state,'to state',t.to_state,'at rate',t.rate,'called',t.name
+    This is the base class from which models should inherit.
+    """
+
+    def __init__(self, params=None):
         
-    return xn_list
+        self.initialize(self, params)
 
-    
-def get_profile_and_soil_thickness(grid, data):
-    
-    nr = grid.number_of_node_rows
-    nc = grid.number_of_node_columns
-    elev = zeros(nc)
-    soil = zeros(nc)
-    for c in range(nc):
-        e = (c%2)/2.0
-        s = 0
-        r = 0
-        while r<nr and data[c*nr+r]!=0:
-            e+=1
-            if data[c*nr+r]==7:
-                s+=1
-            r+=1
-        elev[c] = e
-        soil[c] = s
-    return elev, soil
 
+    def initialize(self, num_rows=5, num_cols=5, report_interval=1.0e8,
+                   grid_orientation='vertical', grid_shape='rect'):
+        
+        # Remember the clock time, and calculate when we next want to report
+        # progress.
+        self.current_real_time = time.time()
+        self.next_report = self.current_real_time + report_interval
     
-def flin(x, m, b):
-    """
-    Linear function for curve-fitting.
-    """
-    return m*x+b
-    
-    
-def fquad(x, a, b, c):
-    """
-    Quadratic function for curve-fitting.
-    """
-    return a*x*x+b*x+c
-    
-    
-def write_output(grid, outfilename, iteration):
-    """Write output to file (currently netCDF)."""
-    filename = outfilename + str(iteration).zfill(4) + '.nc'
-    write_netcdf(filename, grid)
+        # Create a grid
+
+        # Create the node-state dictionary
+        ns_dict = self.node_state_dictionary()
+
+
+    def create_grid_and_node_state_field(self, num_rows, num_cols, 
+                                         grid_orientation, grid_shape):
+        """Create the grid and the field containing node states."""
+        self.grid = HexModelGrid(num_rows, num_cols, 1.0, 
+                                 orientation=grid_orientation, 
+                                 shape=grid_shape)
+        self.grid.add_zeros('node', 'node_state', dtype=int)
+
+
+    def node_state_dictionary(self):
+        """Create and return a dictionary of all possible node (cell) states.
+        
+        This method creates a default set of states (just two); it is a
+        template meant to be overridden.
+        """
+        ns_dict = { 0 : 'on', 
+                    1 : 'off'}
+        return ns_dict
+
+
+    def transition_list(self):
+        """Create and return a list of transition objects.
+        
+        This method creates a default set of transitions (just two); it is a
+        template meant to be overridden.
+        """
+        xn_list = []
+        xn_list.append(Transition((0, 1, 0), (1, 0, 0), 1.0))
+        xn_list.append(Transition((1, 0, 0), (0, 1, 0), 1.0))
+        return xn_list
+
+        
+    def write_output(grid, outfilename, iteration):
+        """Write output to file (currently netCDF)."""
+        filename = outfilename + str(iteration).zfill(4) + '.nc'
+        write_netcdf(filename, grid)
 
     
 def run(uplift_interval, d): #d_ratio_exp):
 
     # INITIALIZE
-
-    #uplift_interval = 1e7
-
-    #filenm = 'test_output'
-    #imagenm = 'Hill141213/hill'+str(int(d_ratio_exp))+'d'
-    
-    
-    # Remember the clock time, and calculate when we next want to report
-    # progress.
-    current_real_time = time.time()
-    next_report = current_real_time + report_interval
-    next_uplift = uplift_interval
-
-    # Create a grid
-    hmg = HexModelGrid(nr, nc, 1.0, orientation='vertical', shape='rect',
-                       reorient_links=True)
-
-    # Close the right-hand grid boundaries
-    #hmg.set_closed_nodes(arange((nc-1)*nr, hmg.number_of_nodes))
-
-    # Set up the states and pair transitions.
-    # Transition data here represent particles moving on a lattice: one state
-    # per direction (for 6 directions), plus an empty state, a stationary
-    # state, and a wall state.
-    ns_dict = { 0 : 'empty', 
-                1 : 'moving up',
-                2 : 'moving right and up',
-                3 : 'moving right and down',
-                4 : 'moving down',
-                5 : 'moving left and down',
-                6 : 'moving left and up',
-                7 : 'rest',
-                8 : 'wall'}
-    xn_list = setup_transition_list(g, f, d)
-    #xn_list = []
-    #xn_list.append( Transition((0,1,0), (0,7,0), g, 'gravity 1') )
-
-
-    # Create data and initialize values.
-    node_state_grid = hmg.add_zeros('node', 'node_state_grid', dtype=int)
 
     # Lower rows get resting particles
     if nc % 2 == 0:  # if even num cols, bottom right is...
@@ -331,7 +272,7 @@ def get_params():
     params['disturbance_rate'] = 100.0 / (3600 * 24 * 365.25)
 
     return params
-    
+
     
 def report_run_params(params):
     """Display on screen some basic information about the run."""
