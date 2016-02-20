@@ -1,13 +1,6 @@
 #!/usr/env/python
 """
-Hillslope model with block uplift.
-
-TODO NOTES:
-- get a realistic set of parms to play with
-- clean up the code to make it "externally runnable"
-- make a master run script
-- start a matrix of runs exploring different u, d, and L
-- while that's going, do some profiling to find speed bottlenecks
+Base class for a "full" generic CTS model.
 """
 
 _DEBUG = False
@@ -15,14 +8,8 @@ _DEBUG = False
 import time
 #import random
 from numpy import zeros, bincount, arange, savetxt, sqrt, log10, mean, arctan, pi, random
-from pylab import subplots, plot, show, xlabel, ylabel, title, axis, figure, clf, savefig
-from landlab import HexModelGrid
 from landlab.io.netcdf import write_netcdf
 from landlab.ca.celllab_cts import Transition, CAPlotter
-from landlab.ca.oriented_hex_cts import OrientedHexCTS
-from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
-from scipy.optimize import curve_fit
-import matplotlib
 
 
 class CTSModel(object):
@@ -34,15 +21,16 @@ class CTSModel(object):
 
     def __init__(self, num_rows=5, num_cols=5, report_interval=1.0e8,
                    grid_orientation='vertical', grid_shape='rect',
-                   show_plots=False, **kwds):
+                   show_plots=False, cts_type='oriented_hex', **kwds):
         
         self.initialize(num_rows, num_cols, report_interval,
-                   grid_orientation, grid_shape, show_plots, **kwds)
+                   grid_orientation, grid_shape, show_plots, cts_type,
+                   **kwds)
 
 
     def initialize(self, num_rows=5, num_cols=5, report_interval=1.0e8,
                    grid_orientation='vertical', grid_shape='rect',
-                   show_plots=False, **kwds):
+                   show_plots=False, cts_type='oriented_hex', **kwds):
         
         # Remember the clock time, and calculate when we next want to report
         # progress.
@@ -51,7 +39,8 @@ class CTSModel(object):
     
         # Create a grid
         self.create_grid_and_node_state_field(num_rows, num_cols, 
-                                              grid_orientation, grid_shape)
+                                              grid_orientation, grid_shape,
+                                              cts_type)
 
         # Create the node-state dictionary
         ns_dict = self.node_state_dictionary()
@@ -63,20 +52,40 @@ class CTSModel(object):
         xn_list = self.transition_list()
 
         # Create the CA object
-        self.ca = OrientedHexCTS(self.grid, ns_dict, xn_list, nsg)
-        
+        if cts_type == 'raster':
+            from landlab.ca.raster_cts import RasterCTS
+            self.ca = RasterCTS(self.grid, ns_dict, xn_list, nsg)
+        elif cts_type == 'oriented_raster':
+            from landlab.ca.oriented_raster_cts import OrientedRasterCTS
+            self.ca = OrientedRasterCTS(self.grid, ns_dict, xn_list, nsg)
+        elif cts_type == 'hex':
+            from landlab.ca.hex_cts import HexCTS
+            self.ca = HexCTS(self.grid, ns_dict, xn_list, nsg)
+        else:
+            from landlab.ca.oriented_hex_cts import OrientedHexCTS
+            self.ca = OrientedHexCTS(self.grid, ns_dict, xn_list, nsg)
+
         # Initialize graphics
         self._show_plots = show_plots
-        if show_plots==True:
+        if show_plots == True:
             self.initialize_plotting(self)
 
 
     def create_grid_and_node_state_field(self, num_rows, num_cols, 
-                                         grid_orientation, grid_shape):
+                                         grid_orientation, grid_shape,
+                                         cts_type):
         """Create the grid and the field containing node states."""
-        self.grid = HexModelGrid(num_rows, num_cols, 1.0, 
-                                 orientation=grid_orientation, 
-                                 shape=grid_shape)
+
+        if cts_type == 'raster' or cts_type == 'oriented_raster':
+            from landlab import RasterModelGrid
+            self.grid = RasterModelGrid(shape=(num_rows, num_cols),
+                                        spacing=1.0)
+        else:
+            from landlab import HexModelGrid
+            self.grid = HexModelGrid(num_rows, num_cols, 1.0, 
+                                     orientation=grid_orientation, 
+                                     shape=grid_shape)
+
         self.grid.add_zeros('node', 'node_state', dtype=int)
 
 
@@ -139,20 +148,17 @@ class CTSModel(object):
         """Set and return the various model parameters."""
     
         params = {}
-        params['num_rows'] = 113
-        params['num_cols'] = 127
-        params['plot_interval'] = 1.0e9
+        params['num_rows'] = 5
+        params['num_cols'] = 7
+        params['plot_interval'] = 1.0e99
         params['output_interval'] = 1.0e99
-        params['run_duration'] = 1.0e10
+        params['run_duration'] = 1.0
         params['report_interval'] = 5.0  # report interval, in real-time seconds
         params['plot_every_transition'] = False
-    
+
         return params
 
 
-
-
-
-if __name__=='__main__':
+if __name__ == '__main__':
     ctsm = CTSModel()
     ctsm.run_for(1.0)
