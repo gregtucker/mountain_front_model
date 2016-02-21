@@ -41,7 +41,8 @@ class CTSModel(object):
         # progress.
         self.current_real_time = time.time()
         self.next_report = self.current_real_time + report_interval
-    
+        self.report_interval = report_interval
+
         # Create a grid
         self.create_grid_and_node_state_field(grid_size[0], grid_size[1], 
                                               grid_orientation, grid_shape,
@@ -147,21 +148,6 @@ class CTSModel(object):
     def run_for(self, dt):
 
         self.ca.run(self.ca.current_time + dt, self.ca.node_state)
-
-
-    def get_params():
-        """Set and return the various model parameters."""
-    
-        params = {}
-        params['num_rows'] = 5
-        params['num_cols'] = 7
-        params['plot_interval'] = 1.0e99
-        params['output_interval'] = 1.0e99
-        params['run_duration'] = 1.0
-        params['report_interval'] = 5.0  # report interval, in real-time seconds
-        params['plot_every_transition'] = False
-
-        return params
 
 
 if __name__ == '__main__':
