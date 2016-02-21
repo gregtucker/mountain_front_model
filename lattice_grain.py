@@ -7,7 +7,7 @@ Created on Tue Feb  2 07:37:59 2016
 @author: gtucker
 """
 
-from landlab.ca import Transition
+from landlab.ca.celllab_cts import Transition
 
 
 def lattice_grain_node_states():
