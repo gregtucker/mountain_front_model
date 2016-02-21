@@ -32,24 +32,25 @@ class GrainHill(CTSModel):
     """
     Model hillslope evolution with block uplift.
     """
-    def __init__(self, grid_size, report_interval=1.0e8, run_duration, 
-                 output_interval=0.0, disturbance_rate=1.0e-6,
-                 weathering_rate=1.0e-6, **kwds):
-        
-        if output_interval == 0.0:
-            output_interval = 1.0e99
+    def __init__(self, grid_size, report_interval=1.0e8, run_duration=1.0, 
+                 output_interval=1.0e99, disturbance_rate=1.0e-6,
+                 weathering_rate=1.0e-6, uplift_interval=1.0, **kwds):
 
-        self.initialize(self, grid_size, run_duration, output_interval,
-                        disturbance_rate, weathering_rate, **kwds)
+        self.initialize(grid_size, report_interval, run_duration,
+                        output_interval, disturbance_rate, weathering_rate,
+                        uplift_interval, **kwds)
         
-    def initialize(self, grid_size, run_duration, output_interval, 
-                   disturbance_rate, weathering_rate, **kwds):
+    def initialize(self, grid_size, report_interval, run_duration,
+                   output_interval, disturbance_rate, weathering_rate, 
+                   uplift_interval, **kwds):
                        
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
+        self.uplift_interval = uplift_interval
+        self.next_uplift = uplift_interval
 
         # Call base class init
-        super(GrainHill, self).initialize(grid_size, 
+        super(GrainHill, self).initialize(grid_size=grid_size, 
                                           report_interval=report_interval, 
                                           grid_orientation='vertical',
                                           grid_shape='rect',
@@ -143,47 +144,6 @@ def get_profile_and_soil_thickness(grid, data):
 def run(uplift_interval, d): #d_ratio_exp):
 
     # INITIALIZE
-
-    #uplift_interval = 1e7
-
-    #filenm = 'test_output'
-    #imagenm = 'Hill141213/hill'+str(int(d_ratio_exp))+'d'
-    
-    
-    # Remember the clock time, and calculate when we next want to report
-    # progress.
-    current_real_time = time.time()
-    next_report = current_real_time + report_interval
-    next_uplift = uplift_interval
-
-    # Create a grid
-    hmg = HexModelGrid(nr, nc, 1.0, orientation='vertical', shape='rect',
-                       reorient_links=True)
-
-    # Close the right-hand grid boundaries
-    #hmg.set_closed_nodes(arange((nc-1)*nr, hmg.number_of_nodes))
-
-    # Set up the states and pair transitions.
-    # Transition data here represent particles moving on a lattice: one state
-    # per direction (for 6 directions), plus an empty state, a stationary
-    # state, and a wall state.
-    ns_dict = { 0 : 'empty', 
-                1 : 'moving up',
-                2 : 'moving right and up',
-                3 : 'moving right and down',
-                4 : 'moving down',
-                5 : 'moving left and down',
-                6 : 'moving left and up',
-                7 : 'rest',
-                8 : 'wall'}
-    xn_list = setup_transition_list(g, f, d)
-    #xn_list = []
-    #xn_list.append( Transition((0,1,0), (0,7,0), g, 'gravity 1') )
-
-
-    # Create data and initialize values.
-    node_state_grid = hmg.add_zeros('node', 'node_state_grid', dtype=int)
-
     # Lower rows get resting particles
     if nc % 2 == 0:  # if even num cols, bottom right is...
         bottom_right = nc - 1
@@ -396,7 +356,7 @@ def run_model():
 
 def main():
     
-    grain_hill_model = GrainHill()
+    grain_hill_model = GrainHill((5, 7))
 
 
 if __name__=='__main__':
