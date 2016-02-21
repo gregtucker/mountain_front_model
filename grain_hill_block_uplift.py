@@ -33,14 +33,20 @@ class GrainHill(CTSModel):
     Model hillslope evolution with block uplift.
     """
     def __init__(self, grid_size, report_interval=1.0e8, run_duration, 
-                 output_interval=0.0, **kwds):
+                 output_interval=0.0, disturbance_rate=1.0e-6,
+                 weathering_rate=1.0e-6, **kwds):
         
         if output_interval == 0.0:
             output_interval = 1.0e99
 
-        self.initialize(self, grid_size, run_duration, output_interval, **kwds)
+        self.initialize(self, grid_size, run_duration, output_interval,
+                        disturbance_rate, weathering_rate, **kwds)
         
-    def initialize(self, grid_size, run_duration, output_interval, **kwds):
+    def initialize(self, grid_size, run_duration, output_interval, 
+                   disturbance_rate, weathering_rate, **kwds):
+                       
+        self.disturbance_rate = disturbance_rate
+        self.weathering_rate = weathering_rate
 
         # Call base class init
         super(GrainHill, self).initialize(grid_size, 
