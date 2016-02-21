@@ -10,6 +10,7 @@ import time
 from numpy import zeros, bincount, arange, savetxt, sqrt, log10, mean, arctan, pi, random
 from landlab.io.netcdf import write_netcdf
 from landlab.ca.celllab_cts import Transition, CAPlotter
+from matplotlib.pyplot import axis
 
 
 class CTSModel(object):
@@ -19,18 +20,22 @@ class CTSModel(object):
     This is the base class from which models should inherit.
     """
 
-    def __init__(self, num_rows=5, num_cols=5, report_interval=1.0e8,
-                   grid_orientation='vertical', grid_shape='rect',
-                   show_plots=False, cts_type='oriented_hex', **kwds):
-        
-        self.initialize(num_rows, num_cols, report_interval,
-                   grid_orientation, grid_shape, show_plots, cts_type,
-                   **kwds)
+    def __init__(self, grid_size=(5, 5), report_interval=5.0,
+                 grid_orientation='vertical', grid_shape='rect',
+                 show_plots=False, cts_type='oriented_hex', 
+                 run_duration=1.0, output_interval=1.0e99,
+                 plot_every_transition=False, **kwds):
+
+        self.initialize(grid_size, report_interval, grid_orientation,
+                        grid_shape, show_plots, cts_type, run_duration,
+                        output_interval, plot_every_transition, **kwds)
 
 
-    def initialize(self, num_rows=5, num_cols=5, report_interval=1.0e8,
-                   grid_orientation='vertical', grid_shape='rect',
-                   show_plots=False, cts_type='oriented_hex', **kwds):
+    def initialize(self, grid_size=(5, 5), report_interval=5.0,
+                 grid_orientation='vertical', grid_shape='rect',
+                 show_plots=False, cts_type='oriented_hex', 
+                 run_duration=1.0, output_interval=1.0e99,
+                 plot_every_transition=False, **kwds):
         
         # Remember the clock time, and calculate when we next want to report
         # progress.
@@ -38,7 +43,7 @@ class CTSModel(object):
         self.next_report = self.current_real_time + report_interval
     
         # Create a grid
-        self.create_grid_and_node_state_field(num_rows, num_cols, 
+        self.create_grid_and_node_state_field(grid_size[0], grid_size[1], 
                                               grid_orientation, grid_shape,
                                               cts_type)
 

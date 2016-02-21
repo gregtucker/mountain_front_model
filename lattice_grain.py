@@ -10,6 +10,22 @@ Created on Tue Feb  2 07:37:59 2016
 from landlab.ca import Transition
 
 
+def lattice_grain_node_states():
+    """
+    Create and return dict of states for lattice-grain model.
+    """
+    ns_dict = { 0 : 'empty', 
+                1 : 'moving up',
+                2 : 'moving right and up',
+                3 : 'moving right and down',
+                4 : 'moving down',
+                5 : 'moving left and down',
+                6 : 'moving left and up',
+                7 : 'rest',
+                8 : 'wall'}
+    return ns_dict
+
+
 def lattice_grain_transition_list(g=0.0, f=0.0):
     """
     Creates and returns a list of Transition() objects to represent state
