@@ -35,7 +35,7 @@ class GrainHill(CTSModel):
     def __init__(self, grid_size, report_interval=1.0e8, run_duration=1.0, 
                  output_interval=1.0e99, disturbance_rate=1.0e-6,
                  weathering_rate=1.0e-6, uplift_interval=1.0, **kwds):
-
+        """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, disturbance_rate, weathering_rate,
                         uplift_interval, **kwds)
@@ -43,7 +43,7 @@ class GrainHill(CTSModel):
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, disturbance_rate, weathering_rate, 
                    uplift_interval, **kwds):
-                       
+        """Initialize the grain hill model."""
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
         self.uplift_interval = uplift_interval
@@ -120,7 +120,39 @@ class GrainHill(CTSModel):
             
         return xn_list
 
-    
+    def initialize_node_state_grid(self):
+        """Set up initial node states.
+        
+        Examples
+        --------
+        >>> gh = GrainHill((5, 7))
+        >>> gh.grid.at_node['node_state']        
+        array([8, 7, 7, 8, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        """
+        
+        # For shorthand, get a reference to the node-state grid
+        nsg = self.grid.at_node['node_state']
+
+        # Fill the bottom two rows with grains
+        right_side_x = 0.866025403784 * (self.grid.number_of_node_columns - 1)
+        for i in range(self.grid.number_of_nodes):
+            if self.grid.node_y[i] < 1.0:
+                if (self.grid.node_x[i] > 0.0 and
+                    self.grid.node_x[i] < right_side_x):
+                    nsg[i] = 7
+        
+        # Place "wall" particles in the lower-left and lower-right corners
+        if self.grid.number_of_node_columns % 2 == 0:
+            bottom_right = self.grid.number_of_node_columns - 1
+        else:
+            bottom_right = self.grid.number_of_node_columns // 2
+        nsg[0] = 8  # bottom left
+        nsg[bottom_right] = 8
+        
+        return nsg
+
+
 def get_profile_and_soil_thickness(grid, data):
     
     nr = grid.number_of_node_rows
@@ -145,19 +177,6 @@ def run(uplift_interval, d): #d_ratio_exp):
 
     # INITIALIZE
     # Lower rows get resting particles
-    if nc % 2 == 0:  # if even num cols, bottom right is...
-        bottom_right = nc - 1
-    else:
-        bottom_right = nc // 2
-    right_side_x = 0.866025403784 * (nc - 1)
-    for i in range(hmg.number_of_nodes):
-        if hmg.node_y[i] < 3.0:
-            if hmg.node_x[i] > 0.0 and hmg.node_x[i] < right_side_x:
-                node_state_grid[i] = 7
-        #elif hmg.node_x[i]>((nc-1)*0.866):
-        #    node_state_grid[i] = 8
-    node_state_grid[0] = 8  # bottom left
-    node_state_grid[bottom_right] = 8
     #for i in range(hmg.number_of_nodes):
     #    print i, hmg.node_x[i], hmg.node_y[i], node_state_grid[i]
 
@@ -360,4 +379,6 @@ def main():
 
 
 if __name__=='__main__':
+    import doctest
+    doctest.testmod()
     main()
