@@ -52,7 +52,7 @@ class CTSModel(object):
         ns_dict = self.node_state_dictionary()
 
         # Initialize values of the node-state grid
-        nsg = self.initialize_node_state_grid(ns_dict)
+        nsg = self.initialize_node_state_grid()
         
         # Create the transition list
         xn_list = self.transition_list()
@@ -124,15 +124,12 @@ class CTSModel(object):
         write_netcdf(filename, grid)
 
     
-    def initialize_node_state_grid(self, ns_dict=None):
+    def initialize_node_state_grid(self):
         """Initialize values in the node-state grid.
         
         This method should be overridden. The default is random "on" and "off".        
         """
-        if ns_dict is None:
-            num_states = 2
-        else:
-            num_states = len(ns_dict)
+        num_states = 2
         for i in range(self.grid.number_of_nodes):
             self.grid.at_node['node_state'][i] = random.randint(num_states)
         return self.grid.at_node['node_state']
