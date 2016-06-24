@@ -43,6 +43,12 @@ class CTSModel(object):
         self.next_report = self.current_real_time + report_interval
         self.report_interval = report_interval
 
+        # Interval for output
+        self.output_interval = output_interval
+
+        # Duration for run
+        self.run_duration = run_duration
+
         # Create a grid
         self.create_grid_and_node_state_field(grid_size[0], grid_size[1], 
                                               grid_orientation, grid_shape,
@@ -150,3 +156,4 @@ class CTSModel(object):
 if __name__ == '__main__':
     ctsm = CTSModel(show_plots=True)
     ctsm.run_for(1.0)
+    ctsm.ca_plotter.update_plot()
