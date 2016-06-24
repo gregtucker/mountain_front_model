@@ -3,9 +3,9 @@
 Hillslope model with block uplift.
 
 TODO NOTES:
-- get a realistic set of parms to play with
+- create a lattice uplifter object
 - clean up the code to make it "externally runnable"
-- make a master run script
+- get a realistic set of parms to play with
 - start a matrix of runs exploring different u, d, and L
 - while that's going, do some profiling to find speed bottlenecks
 """
@@ -28,37 +28,54 @@ from scipy.optimize import curve_fit
 import matplotlib
 
 
-class GrainHill(CTSModel):
-    """
-    Model hillslope evolution with block uplift.
-    """
-    def __init__(self, grid_size, report_interval=1.0e8, run_duration=1.0, 
-                 output_interval=1.0e99, disturbance_rate=1.0e-6,
-                 weathering_rate=1.0e-6, uplift_interval=1.0, **kwds):
-        """Call the initialize() method."""
-        self.initialize(grid_size, report_interval, run_duration,
-                        output_interval, disturbance_rate, weathering_rate,
-                        uplift_interval, **kwds)
-        
-    def initialize(self, grid_size, report_interval, run_duration,
-                   output_interval, disturbance_rate, weathering_rate, 
-                   uplift_interval, **kwds):
-        """Initialize the grain hill model."""
-        self.disturbance_rate = disturbance_rate
-        self.weathering_rate = weathering_rate
-        self.uplift_interval = uplift_interval
-        self.next_uplift = uplift_interval
+def initialize(self, grid_size, report_interval, run_duration,
+               output_interval, disturbance_rate, weathering_rate, 
+               uplift_interval, **kwds):
+    """Initialize the grain hill model."""
+    self.disturbance_rate = disturbance_rate
+    self.weathering_rate = weathering_rate
+    self.uplift_interval = uplift_interval
+    self.next_uplift = uplift_interval
 
-        # Call base class init
-        super(GrainHill, self).initialize(grid_size=grid_size, 
-                                          report_interval=report_interval, 
-                                          grid_orientation='vertical',
-                                          grid_shape='rect',
-                                          show_plots='True',
-                                          cts_type='oriented_hex',
-                                          run_duration=run_duration,
-                                          output_interval=output_interval,
-                                          plot_every_transition=False)
+    # Remember the clock time, and calculate when we next want to report
+    # progress.
+    self.current_real_time = time.time()
+    self.next_report = self.current_real_time + report_interval
+    self.report_interval = report_interval
+
+    # Create a grid
+    self.create_grid_and_node_state_field(grid_size[0], grid_size[1], 
+                                          grid_orientation, grid_shape,
+                                          cts_type)
+
+    # Create the node-state dictionary
+    ns_dict = self.node_state_dictionary()
+
+    # Initialize values of the node-state grid
+    nsg = self.initialize_node_state_grid()
+    
+    # Create the transition list
+    xn_list = self.transition_list()
+
+    # Create the CA object
+    if cts_type == 'raster':
+        from landlab.ca.raster_cts import RasterCTS
+        self.ca = RasterCTS(self.grid, ns_dict, xn_list, nsg)
+    elif cts_type == 'oriented_raster':
+        from landlab.ca.oriented_raster_cts import OrientedRasterCTS
+        self.ca = OrientedRasterCTS(self.grid, ns_dict, xn_list, nsg)
+    elif cts_type == 'hex':
+        from landlab.ca.hex_cts import HexCTS
+        self.ca = HexCTS(self.grid, ns_dict, xn_list, nsg)
+    else:
+        from landlab.ca.oriented_hex_cts import OrientedHexCTS
+        self.ca = OrientedHexCTS(self.grid, ns_dict, xn_list, nsg)
+
+    # Initialize graphics
+    self._show_plots = show_plots
+    if show_plots == True:
+        self.initialize_plotting(self)
+
 
     def node_state_dictionary(self):
         """
