@@ -74,7 +74,7 @@ class CTSModel(object):
         # Initialize graphics
         self._show_plots = show_plots
         if show_plots == True:
-            self.initialize_plotting(self)
+            self.initialize_plotting(**kwds)
 
 
     def create_grid_and_node_state_field(self, num_rows, num_cols, 
@@ -117,7 +117,7 @@ class CTSModel(object):
         xn_list.append(Transition((1, 0, 0), (0, 1, 0), 1.0))
         return xn_list
 
-        
+
     def write_output(grid, outfilename, iteration):
         """Write output to file (currently netCDF)."""
         filename = outfilename + str(iteration).zfill(4) + '.nc'
@@ -137,7 +137,7 @@ class CTSModel(object):
 
     def initialize_plotting(self, **kwds):
         """Create and configure CAPlotter object."""
-        self.ca_plotter = CAPlotter(**kwds)
+        self.ca_plotter = CAPlotter(self.ca, **kwds)
         self.ca_plotter.update_plot()
         axis('off')
 
@@ -148,5 +148,5 @@ class CTSModel(object):
 
 
 if __name__ == '__main__':
-    ctsm = CTSModel()
+    ctsm = CTSModel(show_plots=True)
     ctsm.run_for(1.0)
