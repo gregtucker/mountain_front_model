@@ -1,0 +1,7 @@
+# Input file template for Grain Hill model
+number_of_node_rows:
+9
+number_of_node_columns:
+15
+report_interval: time interval for reporting output to user (real-time seconds)
+5.0
