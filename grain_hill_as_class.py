@@ -11,6 +11,7 @@ TODO NOTES:
 
 _DEBUG = False
 
+import sys
 from cts_model import CTSModel
 from lattice_grain import (lattice_grain_node_states,
                            lattice_grain_transition_list)
@@ -227,18 +228,29 @@ class GrainHill(CTSModel):
         return elev, soil
 
 
-def main():
+def get_params_from_input_file(filename):
+    """Fetch parameter values from input file."""
+    from landlab import ModelParameterDictionary
     
-    grain_hill_model = GrainHill((101, 101), report_interval=5.0,
-                                 run_duration=3600.0, friction_coef=1.0,
-                                 disturbance_rate=1/60.0,
-                                 weathering_rate=1.0e99,
-                                 uplift_interval=300.0,
-                                 plot_interval=120.0)
+    mpd_params = ModelParameterDictionary(filename)
+    return mpd_params
+
+
+def main(params):
+    """Initialize model with dict of params then run it."""
+    grid_size = (int(params['number_of_node_rows']), 
+                 int(params['number_of_node_columns']))
+    grain_hill_model = GrainHill(grid_size)
     grain_hill_model.run()
 
 
 if __name__=='__main__':
-    #import doctest
-    #doctest.testmod()
-    main()
+    """Executes model."""
+    try:
+        infile = sys.argv[1]
+    except IndexError:
+        print('Must include input file name on command line')
+        sys.exit(1)
+
+    params = get_params_from_input_file(infile)
+    main(params)
