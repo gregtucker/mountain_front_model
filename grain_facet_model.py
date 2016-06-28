@@ -236,9 +236,9 @@ class GrainFacetSimulator(CTSModel):
 
 def get_params_from_input_file(filename):
     """Fetch parameter values from input file."""
-    from landlab import ModelParameterDictionary
+    from landlab.core import load_params
     
-    mpd_params = ModelParameterDictionary(filename, auto_type=True)
+    mpd_params = load_params(filename)
 
     return mpd_params
 
