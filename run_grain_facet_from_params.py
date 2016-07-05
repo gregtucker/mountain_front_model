@@ -21,6 +21,7 @@ Created on Sun Jun 26 09:13:46 2016
 
 @author: gtucker
 """
+import time
 
 import grain_facet_model as gfm
 
@@ -36,4 +37,6 @@ params = {
     'friction_coef' : 1.0,
     'fault_x' : 8.0
     }
+start = time.time()
 gfm.main(params)
+print 'Run time:', time.time() - start
