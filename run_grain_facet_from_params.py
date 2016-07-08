@@ -29,9 +29,9 @@ params = {
     'number_of_node_rows' : 40,
     'number_of_node_columns' : 61,
     'report_interval' : 5.0,
-    'run_duration' : 1.0e6,
-    'plot_interval' : 5.0e4,
-    'uplift_interval' : 5.0e4,
+    'run_duration' : 1.0e5,
+    'plot_interval' : 5.0e3,
+    'uplift_interval' : 5.0e3,
     'disturbance_rate' : 1.0e-4,
     'weathering_rate' : 1.0e-5,
     'friction_coef' : 1.0,
@@ -40,3 +40,4 @@ params = {
 start = time.time()
 gfm.main(params)
 print 'Run time:', time.time() - start
+
