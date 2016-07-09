@@ -249,8 +249,7 @@ def main(params):
                  int(params['number_of_node_columns']))
     grain_facet_model = GrainFacetSimulator(grid_size, **params)
     grain_facet_model.run()
-    for c in range(61):
-        print(grain_facet_model.ca.node_state[c+1220])
+
 
 if __name__=='__main__':
     """Executes model."""
