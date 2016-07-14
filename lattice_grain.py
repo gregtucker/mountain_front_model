@@ -75,6 +75,7 @@ def lattice_grain_transition_list(g=0.0, f=0.0):
         10. IO-RE => RE-OU (oblique collision with rest particle)
         11. IO-WA => OO-WA (oblique collision with wall)
     """
+    print '#### LGM XN LIST HERE ###'
     xn_list = []
     
     p_elast = 1.0 - f  # probability of elastic (non-dissipative) collision
@@ -419,6 +420,7 @@ def lattice_grain_transition_list(g=0.0, f=0.0):
     # Gravity rule for lateral destabilization (represents grain
     # motion above angle of repose on sloping surface)
     if g > 0.0:
+        print '**** GRAVITY RULE HERE! ****'
         xn_list.append( Transition((7,0,2), (3,0,2), g/2.0, 'gravity') )
         xn_list.append( Transition((0,7,1), (0,5,1), g/2.0, 'gravity') )
  

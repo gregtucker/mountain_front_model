@@ -230,9 +230,9 @@ class GrainHill(CTSModel):
 
 def get_params_from_input_file(filename):
     """Fetch parameter values from input file."""
-    from landlab import ModelParameterDictionary
-    
-    mpd_params = ModelParameterDictionary(filename)
+    from landlab.core import load_params
+
+    mpd_params = load_params(filename)
     return mpd_params
 
 
@@ -240,9 +240,12 @@ def main(params):
     """Initialize model with dict of params then run it."""
     grid_size = (int(params['number_of_node_rows']), 
                  int(params['number_of_node_columns']))
-    grain_hill_model = GrainHill(grid_size)
+    grain_hill_model = GrainHill(grid_size, **params)
     grain_hill_model.run()
 
+    # Temporary: save last image to file
+    import matplotlib.pyplot as plt
+    plt.savefig('grain_hill_final.png')
 
 if __name__=='__main__':
     """Executes model."""
