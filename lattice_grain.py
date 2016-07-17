@@ -26,7 +26,7 @@ def lattice_grain_node_states():
     return ns_dict
 
 
-def lattice_grain_transition_list(g=0.0, f=0.0):
+def lattice_grain_transition_list(g=0.0, f=0.0, motion=1.0):
     """
     Creates and returns a list of Transition() objects to represent state
     transitions for simple granular mechanics model.
@@ -40,7 +40,9 @@ def lattice_grain_transition_list(g=0.0, f=0.0):
         Frictional parameter. Dimensions of 1/time. Probability per unit time
         of a frictional collision, in which one or both colliding particles
         come to a halt.
-    
+    motion : float (optional)
+        Rate of motion (cells per time unit)
+
     Returns
     -------
     xn_list : list of Transition objects
@@ -75,18 +77,17 @@ def lattice_grain_transition_list(g=0.0, f=0.0):
         10. IO-RE => RE-OU (oblique collision with rest particle)
         11. IO-WA => OO-WA (oblique collision with wall)
     """
-    print '#### LGM XN LIST HERE ###'
     xn_list = []
-    
-    p_elast = 1.0 - f  # probability of elastic (non-dissipative) collision
+
+    p_elast = motion * (1.0 - f)  # rate of elastic (non-dissipative) collision
 
     # Rule 1: Transitions for particle movement into an empty cell
-    xn_list.append( Transition((1,0,0), (0,1,0), 1., 'motion') )
-    xn_list.append( Transition((2,0,1), (0,2,1), 1., 'motion') )
-    xn_list.append( Transition((3,0,2), (0,3,2), 1., 'motion') )
-    xn_list.append( Transition((0,4,0), (4,0,0), 1., 'motion') )
-    xn_list.append( Transition((0,5,1), (5,0,1), 1., 'motion') )
-    xn_list.append( Transition((0,6,2), (6,0,2), 1., 'motion') )
+    xn_list.append( Transition((1,0,0), (0,1,0), motion, 'motion') )
+    xn_list.append( Transition((2,0,1), (0,2,1), motion, 'motion') )
+    xn_list.append( Transition((3,0,2), (0,3,2), motion, 'motion') )
+    xn_list.append( Transition((0,4,0), (4,0,0), motion, 'motion') )
+    xn_list.append( Transition((0,5,1), (5,0,1), motion, 'motion') )
+    xn_list.append( Transition((0,6,2), (6,0,2), motion, 'motion') )
 
     # Rule 2: Transitions for head-on collision: elastic
     if p_elast > 0.0:
@@ -420,7 +421,6 @@ def lattice_grain_transition_list(g=0.0, f=0.0):
     # Gravity rule for lateral destabilization (represents grain
     # motion above angle of repose on sloping surface)
     if g > 0.0:
-        print '**** GRAVITY RULE HERE! ****'
         xn_list.append( Transition((7,0,2), (3,0,2), g/2.0, 'gravity') )
         xn_list.append( Transition((0,7,1), (0,5,1), g/2.0, 'gravity') )
  

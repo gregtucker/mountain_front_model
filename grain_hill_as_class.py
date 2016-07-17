@@ -27,18 +27,22 @@ class GrainHill(CTSModel):
     Model hillslope evolution with block uplift.
     """
     def __init__(self, grid_size, report_interval=1.0e8, run_duration=1.0, 
-                 output_interval=1.0e99, disturbance_rate=1.0e-6,
-                 weathering_rate=1.0e-6, uplift_interval=1.0,
-                 plot_interval=1.0e99, friction_coef=0.3, **kwds):
+                 output_interval=1.0e99, settling_rate=2.2e8,
+                 disturbance_rate=1.0, weathering_rate=1.0, 
+                 uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
+                 **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
-                        output_interval, disturbance_rate, weathering_rate,
-                        uplift_interval, plot_interval, friction_coef, **kwds)
+                        output_interval, settling_rate, disturbance_rate,
+                        weathering_rate, uplift_interval, plot_interval,
+                        friction_coef, **kwds)
         
     def initialize(self, grid_size, report_interval, run_duration,
-                   output_interval, disturbance_rate, weathering_rate, 
-                   uplift_interval, plot_interval, friction_coef, **kwds):
+                   output_interval, settling_rate, disturbance_rate,
+                   weathering_rate, uplift_interval, plot_interval,
+                   friction_coef, **kwds):
         """Initialize the grain hill model."""
+        self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
         self.uplift_interval = uplift_interval
@@ -72,7 +76,9 @@ class GrainHill(CTSModel):
         """
         Make and return list of Transition object.
         """
-        xn_list = lattice_grain_transition_list(g=1.0, f=self.friction_coef)
+        xn_list = lattice_grain_transition_list(g=self.settling_rate,
+                                                f=self.friction_coef,
+                                                motion=self.settling_rate)
         xn_list = self.add_weathering_and_disturbance_transitions(xn_list,
                     self.disturbance_rate, self.weathering_rate)
         return xn_list
