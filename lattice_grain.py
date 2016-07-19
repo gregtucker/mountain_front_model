@@ -79,7 +79,10 @@ def lattice_grain_transition_list(g=0.0, f=0.0, motion=1.0):
     """
     xn_list = []
 
+    # Set elastic-response rate, and scale frictional-response rate to motion
+    # rate
     p_elast = motion * (1.0 - f)  # rate of elastic (non-dissipative) collision
+    f *= motion
 
     # Rule 1: Transitions for particle movement into an empty cell
     xn_list.append( Transition((1,0,0), (0,1,0), motion, 'motion') )

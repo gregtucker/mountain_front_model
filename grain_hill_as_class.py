@@ -16,7 +16,7 @@ from cts_model import CTSModel
 from lattice_grain import (lattice_grain_node_states,
                            lattice_grain_transition_list)
 import time
-from numpy import zeros
+from numpy import zeros, count_nonzero
 from matplotlib.pyplot import axis
 from landlab.ca.celllab_cts import Transition
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
@@ -57,8 +57,7 @@ class GrainHill(CTSModel):
                                           show_plots=True,
                                           cts_type='oriented_hex',
                                           run_duration=run_duration,
-                                          output_interval=output_interval,
-                                          plot_every_transition=False)
+                                          output_interval=output_interval)
 
         self.uplifter = LatticeUplifter(self.grid, 
                                         self.grid.at_node['node_state'])
@@ -142,7 +141,7 @@ class GrainHill(CTSModel):
         # Fill the bottom two rows with grains
         right_side_x = 0.866025403784 * (self.grid.number_of_node_columns - 1)
         for i in range(self.grid.number_of_nodes):
-            if self.grid.node_y[i] < 1.0:
+            if self.grid.node_y[i] < 2.0:
                 if (self.grid.node_x[i] > 0.0 and
                     self.grid.node_x[i] < right_side_x):
                     nsg[i] = 7
@@ -189,8 +188,8 @@ class GrainHill(CTSModel):
     
             # Run the model forward in time until the next output step
             print('Running to...' + str(next_pause))
-            self.ca.run(next_pause, self.ca.node_state) #, 
-                   #plot_each_transition=plot_every_transition, plotter=ca_plotter)
+            self.ca.run(next_pause, self.ca.node_state) 
+                   #plot_each_transition=pet, plotter=self.ca_plotter)
             current_time = next_pause
             
             # Handle output to file
@@ -212,8 +211,6 @@ class GrainHill(CTSModel):
                 self.ca.update_link_states_and_transitions(current_time)
                 next_uplift += self.uplift_interval
         
-
-
     def get_profile_and_soil_thickness(self, grid, data):
     
         nr = grid.number_of_node_rows
