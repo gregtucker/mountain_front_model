@@ -8,7 +8,7 @@ _DEBUG = False
 import time
 #import random
 from numpy import zeros, bincount, arange, savetxt, sqrt, log10, mean, arctan, pi, random
-from landlab.io.netcdf import write_netcdf
+from landlab.io.native_landlab import save_grid
 from landlab.ca.celllab_cts import Transition, CAPlotter
 from matplotlib.pyplot import axis
 
@@ -124,12 +124,12 @@ class CTSModel(object):
         return xn_list
 
 
-    def write_output(grid, outfilename, iteration):
+    def write_output(self, grid, outfilename, iteration):
         """Write output to file (currently netCDF)."""
         filename = outfilename + str(iteration).zfill(4) + '.nc'
-        write_netcdf(filename, grid)
+        save_grid(grid, filename)
 
-    
+
     def initialize_node_state_grid(self):
         """Initialize values in the node-state grid.
         
