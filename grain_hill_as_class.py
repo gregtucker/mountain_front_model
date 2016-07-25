@@ -16,7 +16,7 @@ from cts_model import CTSModel
 from lattice_grain import (lattice_grain_node_states,
                            lattice_grain_transition_list)
 import time
-from numpy import zeros, count_nonzero
+from numpy import zeros, count_nonzero, where, amax, logical_and
 from matplotlib.pyplot import axis
 from landlab.ca.celllab_cts import Transition
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
@@ -30,17 +30,17 @@ class GrainHill(CTSModel):
                  output_interval=1.0e99, settling_rate=2.2e8,
                  disturbance_rate=1.0, weathering_rate=1.0, 
                  uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
-                 **kwds):
+                 show_plots=True, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, settling_rate, disturbance_rate,
                         weathering_rate, uplift_interval, plot_interval,
-                        friction_coef, **kwds)
+                        friction_coef, show_plots, **kwds)
         
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
-                   friction_coef, **kwds):
+                   friction_coef, show_plots, **kwds):
         """Initialize the grain hill model."""
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
@@ -54,7 +54,7 @@ class GrainHill(CTSModel):
                                           report_interval=report_interval, 
                                           grid_orientation='vertical',
                                           grid_shape='rect',
-                                          show_plots=True,
+                                          show_plots=show_plots,
                                           cts_type='oriented_hex',
                                           run_duration=run_duration,
                                           output_interval=output_interval)
@@ -131,7 +131,7 @@ class GrainHill(CTSModel):
         --------
         >>> gh = GrainHill((5, 7))
         >>> gh.grid.at_node['node_state']        
-        array([8, 7, 7, 8, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        array([8, 7, 7, 8, 7, 7, 7, 0, 7, 7, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         """
         
@@ -162,7 +162,10 @@ class GrainHill(CTSModel):
 
         # Work out the next times to plot and output
         next_output = self.output_interval
-        next_plot = self.plot_interval
+        if self._show_plots:
+            next_plot = self.plot_interval
+        else:
+            next_plot = self.run_duration + 1
 
         # Next time for a progress report to user
         next_report = self.report_interval
@@ -171,6 +174,7 @@ class GrainHill(CTSModel):
         next_uplift = self.uplift_interval
 
         current_time = 0.0
+        output_iteration = 1
         while current_time < self.run_duration:
             
             # Figure out what time to run to this iteration
@@ -194,17 +198,17 @@ class GrainHill(CTSModel):
             
             # Handle output to file
             if current_time >= next_output:
-                #write_output(hmg, filenm, output_iteration)
-                #output_iteration += 1
+                self.write_output(self.grid, 'grain_hill_model', output_iteration)
+                output_iteration += 1
                 next_output += self.output_interval
-                
+
             # Handle plotting on display
-            if current_time >= next_plot:
+            if self._show_plots and current_time >= next_plot:
                 #node_state_grid[hmg.number_of_node_rows-1] = 8
                 self.ca_plotter.update_plot()
                 axis('off')
                 next_plot += self.plot_interval
-    
+
             # Handle uplift
             if current_time >= next_uplift:
                 self.uplifter.uplift_interior_nodes(rock_state=7)
@@ -212,22 +216,34 @@ class GrainHill(CTSModel):
                 next_uplift += self.uplift_interval
         
     def get_profile_and_soil_thickness(self, grid, data):
-    
-        nr = grid.number_of_node_rows
+        """Calculate and return profiles of elevation and soil thickness.
+        
+        Examples
+        --------
+        >>> from landlab import HexModelGrid
+        >>> hg = HexModelGrid(4, 5, shape='rect', orientation='vert')
+        >>> ns = hg.add_zeros('node', 'node_state', dtype=int)
+        >>> ns[[0, 3, 1, 6, 4, 9, 2]] = 8
+        >>> ns[[8, 13, 11, 16, 14]] = 7
+        >>> gh = GrainHill((3, 7))  # grid size arbitrary here
+        >>> (elev, thickness) = gh.get_profile_and_soil_thickness(hg, ns)
+        >>> elev
+        array([ 0. ,  2.5,  3. ,  2.5,  0. ])
+        >>> thickness
+        array([ 0.,  2.,  2.,  1.,  0.])
+        """
         nc = grid.number_of_node_columns
         elev = zeros(nc)
         soil = zeros(nc)
-        for c in range(nc):
-            e = (c%2)/2.0
-            s = 0
-            r = 0
-            while r<nr and data[c*nr+r]!=0:
-                e+=1
-                if data[c*nr+r]==7:
-                    s+=1
-                r+=1
-            elev[c] = e
-            soil[c] = s
+        for col in range(nc):
+            states = data[grid.nodes[:, col]]  
+            (rows_with_rock_or_sed, ) = where(states > 0)
+            if len(rows_with_rock_or_sed) == 0:
+                elev[col] = 0.0
+            else:
+                elev[col] = amax(rows_with_rock_or_sed) + 0.5 * (col % 2)
+            soil[col] = count_nonzero(logical_and(states > 0, states < 8))
+        
         return elev, soil
 
 
