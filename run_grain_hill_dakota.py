@@ -31,8 +31,8 @@ params['number_of_node_rows'] = num_rows
 params['disturbance_rate'] = 10.0 ** params['disturbance_rate']
 params['uplift_interval'] = 10.0 ** params['uplift_interval']
 params['run_duration'] = 0.5 * domain_length * params['uplift_interval'] / dx
-params['plot_interval'] = 0.5 * params['run_duration']
-params['output_interval'] = 0.25 * params['run_duration']
+params['plot_interval'] = 1.1 * params['run_duration']
+params['output_interval'] = params['run_duration']
 
 
 print params
