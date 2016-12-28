@@ -10,7 +10,7 @@ from cts_model import CTSModel
 from lattice_grain import (lattice_grain_node_states,
                            lattice_grain_transition_list)
 import time
-from numpy import zeros
+import numpy as np
 from matplotlib.pyplot import axis
 from landlab.ca.celllab_cts import Transition
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeNormalFault
@@ -211,19 +211,42 @@ class GrainFacetSimulator(CTSModel):
                 self.uplifter.do_offset(rock_state=8)
                 self.ca.update_link_states_and_transitions(current_time)
                 next_uplift += self.uplift_interval
+    
+    
+    def nodes_in_column(self, col, num_rows, num_cols):
+        """Return array of node IDs in given column.
+        
+        Examples
+        --------
+        >>> gfs = GrainFacetSimulator((3, 5))
+        >>> gfs.nodes_in_column(1, 3, 5)
+        array([ 3,  8, 13])
+        >>> gfs.nodes_in_column(4, 3, 5)
+        array([ 2,  7, 12])
+        >>> gfs = GrainFacetSimulator((3, 6))
+        >>> gfs.nodes_in_column(3, 3, 6)
+        array([ 4, 10, 16])
+        >>> gfs.nodes_in_column(4, 3, 6)
+        array([ 2,  8, 14])
+        """
+        base_node = (col // 2) + (col % 2) * ((num_cols + 1) // 2)
+        num_nodes = num_rows * num_cols
+        return np.arange(base_node, num_nodes, num_cols)
         
 
+    def get_profile_and_soil_thickness(self):
+        """Calculate and return the topographic profile and the regolith
+        thickness."""
+        nr = self.ca.grid.number_of_node_rows
+        nc = self.ca.grid.number_of_node_columns
+        data = self.ca.node_state
 
-    def get_profile_and_soil_thickness(self, grid, data):
-    
-        nr = grid.number_of_node_rows
-        nc = grid.number_of_node_columns
-        elev = zeros(nc)
-        soil = zeros(nc)
+        elev = np.zeros(nc)
+        soil = np.zeros(nc)
         for c in range(nc):
             e = (c%2)/2.0
             s = 0
-            r = 0
+            r = 0 
             while r<nr and data[c*nr+r]!=0:
                 e+=1
                 if data[c*nr+r]==7:
