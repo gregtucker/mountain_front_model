@@ -118,7 +118,7 @@ class GrainHill(CTSModel):
         xn_list : list of Transition objects
             Modified transition list.
         """
-        
+
         # Disturbance rule
         xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
         xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
@@ -126,6 +126,15 @@ class GrainHill(CTSModel):
         xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
         xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
         xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
+    
+        # Weathering rule
+        if w > 0.0:
+            xn_list.append( Transition((8,0,0), (7,0,0), w, 'weathering') )
+            xn_list.append( Transition((8,0,1), (7,0,1), w, 'weathering') )
+            xn_list.append( Transition((8,0,2), (7,0,2), w, 'weathering') )
+            xn_list.append( Transition((0,8,0), (0,7,0), w, 'weathering') )
+            xn_list.append( Transition((0,8,1), (0,7,1), w, 'weathering') )
+            xn_list.append( Transition((0,8,2), (0,7,2), w, 'weathering') )
     
         if _DEBUG:
             print
