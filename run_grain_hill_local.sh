@@ -7,13 +7,15 @@
 echo "run_grain_hill_local.sh here"
 
 SOURCEDIR=$1
+DRIVERDIR=$2
 
 echo "  copying files..."
 cp $SOURCEDIR/grain_hill_as_class.py $PWD
 cp $SOURCEDIR/cts_model.py $PWD
 cp $SOURCEDIR/lattice_grain.py $PWD
+cp $DRIVERDIR/grain_hill_dakota_friendly_driver.py $PWD
 
-runcmd="python $SOURCEDIR/grain_hill_dakota_friendly_driver.py"
+runcmd="python grain_hill_dakota_friendly_driver.py"
 
 echo "  starting python script:"
 echo $runcmd
