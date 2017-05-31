@@ -32,17 +32,18 @@ class GrainHill(CTSModel):
                  output_interval=1.0e99, settling_rate=2.2e8,
                  disturbance_rate=1.0, weathering_rate=1.0, 
                  uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
-                 show_plots=True, **kwds):
+                 rock_state_for_uplift=7, show_plots=True, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, settling_rate, disturbance_rate,
                         weathering_rate, uplift_interval, plot_interval,
-                        friction_coef, show_plots, **kwds)
+                        friction_coef, rock_state_for_uplift, show_plots,
+                        **kwds)
         
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
-                   friction_coef, show_plots, **kwds):
+                   friction_coef, rock_state_for_uplift, show_plots, **kwds):
         """Initialize the grain hill model."""
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
@@ -50,6 +51,7 @@ class GrainHill(CTSModel):
         self.uplift_interval = uplift_interval
         self.plot_interval = plot_interval
         self.friction_coef = friction_coef
+        self.rock_state = rock_state_for_uplift  # 7 (resting sed) or 8 (rock)
 
         # Call base class init
         super(GrainHill, self).initialize(grid_size=grid_size, 
@@ -220,7 +222,7 @@ class GrainHill(CTSModel):
 
             # Handle uplift
             if current_time >= next_uplift:
-                self.uplifter.uplift_interior_nodes(rock_state=7)
+                self.uplifter.uplift_interior_nodes(rock_state=self.rock_state)
                 if _RUN_NEW:
                     self.ca.update_link_states_and_transitions_new(current_time)
                 else:
