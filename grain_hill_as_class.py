@@ -1,12 +1,6 @@
 #!/usr/env/python
 """
 Hillslope model with block uplift.
-
-TODO NOTES:
-- clean up the code to make it "externally runnable"
-- get a realistic set of parms to play with
-- start a matrix of runs exploring different u, d, and L
-- while that's going, do some profiling to find speed bottlenecks
 """
 
 _DEBUG = False
@@ -32,18 +26,21 @@ class GrainHill(CTSModel):
                  output_interval=1.0e99, settling_rate=2.2e8,
                  disturbance_rate=1.0, weathering_rate=1.0, 
                  uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
-                 rock_state_for_uplift=7, show_plots=True, **kwds):
+                 rock_state_for_uplift=7, opt_rock_collapse=False,
+                 show_plots=True, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, settling_rate, disturbance_rate,
                         weathering_rate, uplift_interval, plot_interval,
-                        friction_coef, rock_state_for_uplift, show_plots,
+                        friction_coef, rock_state_for_uplift,
+                        opt_rock_collapse, show_plots,
                         **kwds)
         
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
-                   friction_coef, rock_state_for_uplift, show_plots, **kwds):
+                   friction_coef, rock_state_for_uplift, opt_rock_collapse,
+                   show_plots, **kwds):
         """Initialize the grain hill model."""
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
@@ -52,6 +49,10 @@ class GrainHill(CTSModel):
         self.plot_interval = plot_interval
         self.friction_coef = friction_coef
         self.rock_state = rock_state_for_uplift  # 7 (resting sed) or 8 (rock)
+        if opt_rock_collapse:
+            self.collapse_rate = self.settling_rate
+        else:
+            self.collapse_rate = 0.0
 
         # Call base class init
         super(GrainHill, self).initialize(grid_size=grid_size, 
@@ -66,11 +67,11 @@ class GrainHill(CTSModel):
         self.uplifter = LatticeUplifter(self.grid, 
                                         self.grid.at_node['node_state'])
                                         
-        print '*** GRAIN HILL HAS THIS MANY TRANSITIONS: ***'
-        print 'trn_id:', self.ca.trn_id.shape
-        print 'trn_to:', self.ca.trn_to.shape
-        print 'trn_rate:', self.ca.trn_rate.shape
-        print 'nls:', self.ca.num_link_states
+#        print '*** GRAIN HILL HAS THIS MANY TRANSITIONS: ***'
+#        print 'trn_id:', self.ca.trn_id.shape
+#        print 'trn_to:', self.ca.trn_to.shape
+#        print 'trn_rate:', self.ca.trn_rate.shape
+#        print 'nls:', self.ca.num_link_states
 
     def node_state_dictionary(self):
         """
@@ -89,11 +90,12 @@ class GrainHill(CTSModel):
                                                 f=self.friction_coef,
                                                 motion=self.settling_rate)
         xn_list = self.add_weathering_and_disturbance_transitions(xn_list,
-                    self.disturbance_rate, self.weathering_rate)
-        print '***** GRAIN HILL XN_LIST:', len(xn_list)
+                    self.disturbance_rate, self.weathering_rate,
+                    collapse_rate=self.collapse_rate)
         return xn_list
         
-    def add_weathering_and_disturbance_transitions(self, xn_list, d=0.0, w=0.0):
+    def add_weathering_and_disturbance_transitions(self, xn_list, d=0.0, w=0.0,
+                                                   collapse_rate=0.0):
         """
         Add transition rules representing weathering and/or grain disturbance
         to the list, and return the list.
@@ -112,7 +114,6 @@ class GrainHill(CTSModel):
             Rate of transition (1/time) from fluid / rock pair to
             fluid / resting-grain pair, representing weathering.
         
-        
         Returns
         -------
         xn_list : list of Transition objects
@@ -126,7 +127,7 @@ class GrainHill(CTSModel):
         xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
         xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
         xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
-    
+
         # Weathering rule
         if w > 0.0:
             xn_list.append( Transition((8,0,0), (7,0,0), w, 'weathering') )
@@ -135,7 +136,13 @@ class GrainHill(CTSModel):
             xn_list.append( Transition((0,8,0), (0,7,0), w, 'weathering') )
             xn_list.append( Transition((0,8,1), (0,7,1), w, 'weathering') )
             xn_list.append( Transition((0,8,2), (0,7,2), w, 'weathering') )
-    
+            
+            # "Vertical rock collapse" rule: a rock particle overlying air
+            # will collapse, transitioning to a downward-moving grain
+            if collapse_rate > 0.0:
+                xn_list.append( Transition((0,8,0), (4,0,0), collapse_rate,
+                                           'rock collapse'))
+
         if _DEBUG:
             print
             print 'setup_transition_list(): list has',len(xn_list),'transitions:'
