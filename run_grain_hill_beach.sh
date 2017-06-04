@@ -9,21 +9,23 @@
 
 echo "run_grain_hill_beach.sh here"
 
-SOURCEDIR=$1
-DRIVERDIR=$2
-HOMEDIR=$3
-WORKDIR=$4
-SCRATCHDIR=$5
+HOMEDIR=$1
+WORKDIR=$2
+SCRATCHDIR=$3
+
+echo $HOMEDIR
+echo $WORKDIR
+echo $SCRATCHDIR
 
 source $HOMEDIR/.bashrc
 
-echo "  copying files..."
-cp $SOURCEDIR/grain_hill_as_class.py $PWD
-cp $SOURCEDIR/cts_model.py $PWD
-cp $SOURCEDIR/lattice_grain.py $PWD
-cp $DRIVERDIR/grain_hill_dakota_friendly_driver.py $PWD
+#echo "  copying files..."
+#cp $SOURCEDIR/grain_hill_as_class.py $PWD
+#cp $SOURCEDIR/cts_model.py $PWD
+#cp $SOURCEDIR/lattice_grain.py $PWD
+#cp $DRIVERDIR/grain_hill_dakota_friendly_driver.py $PWD
 
-runcmd="python dakota_friendly_driver.py"
+runcmd="python grain_hill_dakota_friendly_driver.py"
 
 # Create a working directory on the compute node. Copy the contents of
 # the original PBS working directory to it.
@@ -43,4 +45,4 @@ echo "init workdir: " $PBS_O_WORKDIR
 $runcmd
 
 # Copy the completed run to scratch storage.
-cp -R $working $SCRATCHDIR
+#cp -R $working $SCRATCHDIR
