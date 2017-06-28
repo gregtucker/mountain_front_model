@@ -35,7 +35,7 @@ class GrainHill(CTSModel):
                         friction_coef, rock_state_for_uplift,
                         opt_rock_collapse, show_plots,
                         **kwds)
-        
+
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
