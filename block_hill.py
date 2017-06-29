@@ -13,7 +13,7 @@ from lattice_grain import (lattice_grain_node_states,
                            lattice_grain_transition_list)
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
 from landlab.ca.celllab_cts import Transition
-
+import sys
 
 BLOCK_ID = 9
 
@@ -46,6 +46,7 @@ class BlockHill(GrainHill):
                    block_layer_dip_angle, block_layer_thickness,
                    show_plots, **kwds):
         """Initialize the BlockHill model."""
+        print('bh initil')
         
         # Set block-related variables
         self.block_layer_dip_angle = block_layer_dip_angle
@@ -68,10 +69,13 @@ class BlockHill(GrainHill):
         
         self.uplifter = LatticeUplifter(self.grid, 
                                 self.grid.at_node['node_state'],
+                                opt_block_layer=True,
                                 block_ID=BLOCK_ID,
                                 block_layer_dip_angle=block_layer_dip_angle,
                                 block_layer_thickness=block_layer_thickness)
-
+        print('bh initil done')
+        sys.stdout.flush()
+        
     def node_state_dictionary(self):
         """
         Create and return dict of node states.
@@ -84,13 +88,31 @@ class BlockHill(GrainHill):
         return nsd
 
     def add_block_transitions(self, xn_list):
-        """Adds transitions for block undermining."""
+        """Adds transitions for block undermining and weathering."""
+        
+        # Undermining
         xn_list.append( Transition((0,BLOCK_ID,0), (BLOCK_ID,0,0),
                                    self.settling_rate, 'block settling') )
         xn_list.append( Transition((0,BLOCK_ID,1), (BLOCK_ID,0,1),
-                                   self.settling_rate, 'block settling') )
-        xn_list.append( Transition((0,BLOCK_ID,2), (BLOCK_ID,0,2),
-                                   self.settling_rate, 'block settling') )
+                                   self.disturbance_rate, 'block settling') )
+        xn_list.append( Transition((BLOCK_ID,0,2), (0,BLOCK_ID,2),
+                                   self.disturbance_rate, 'block settling') )
+
+        # Weathering
+        xn_list.append( Transition((0,BLOCK_ID,0), (0,7,0),
+                                   self.weathering_rate, 'block weathering') )
+        xn_list.append( Transition((BLOCK_ID,0,0), (7,0,0),
+                                   self.weathering_rate, 'block weathering') )
+        xn_list.append( Transition((0,BLOCK_ID,1), (0,7,1),
+                                   self.weathering_rate, 'block weathering') )
+        xn_list.append( Transition((BLOCK_ID,0,1), (7,0,1),
+                                   self.weathering_rate, 'block weathering') )
+        xn_list.append( Transition((0,BLOCK_ID,2), (0,7,2),
+                                   self.weathering_rate, 'block weathering') )
+        xn_list.append( Transition((BLOCK_ID,0,2), (7,0,2),
+                                   self.weathering_rate, 'block weathering') )
+
+        return xn_list
 
     def transition_list(self):
         """

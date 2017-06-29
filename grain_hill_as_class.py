@@ -42,6 +42,8 @@ class GrainHill(CTSModel):
                    friction_coef, rock_state_for_uplift, opt_rock_collapse,
                    show_plots, **kwds):
         """Initialize the grain hill model."""
+        print('GH initlz')
+        print(kwds)
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
@@ -62,7 +64,8 @@ class GrainHill(CTSModel):
                                           show_plots=show_plots,
                                           cts_type='oriented_hex',
                                           run_duration=run_duration,
-                                          output_interval=output_interval)
+                                          output_interval=output_interval,
+                                          **kwds)
 
         self.uplifter = LatticeUplifter(self.grid, 
                                         self.grid.at_node['node_state'])
