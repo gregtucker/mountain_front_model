@@ -206,7 +206,8 @@ class GrainHill(CTSModel):
         current_time = 0.0
         output_iteration = 1
         while current_time < self.run_duration:
-            
+            print('GH loop top')
+            sys.stdout.flush()
             # Figure out what time to run to this iteration
             next_pause = min(next_output, next_plot)
             next_pause = min(next_pause, next_uplift)
@@ -221,11 +222,14 @@ class GrainHill(CTSModel):
                 next_report = current_real_time + self.report_interval
     
             # Run the model forward in time until the next output step
-            print('Running to...' + str(next_pause))
+            print('GH Running to...' + str(next_pause))
+            sys.stdout.flush()
             self.ca.run(next_pause, self.ca.node_state) 
+            print('GH back from run')
+            sys.stdout.flush()
                    #plot_each_transition=pet, plotter=self.ca_plotter)
             current_time = next_pause
-            
+
             # Handle output to file
             if current_time >= next_output:
                 self.write_output(self.grid, 'grain_hill_model', output_iteration)
@@ -233,17 +237,27 @@ class GrainHill(CTSModel):
                 next_output += self.output_interval
 
             # Handle plotting on display
+            print('GH plotting...')
+            sys.stdout.flush()
             if self._show_plots and current_time >= next_plot:
                 #node_state_grid[hmg.number_of_node_rows-1] = 8
                 self.ca_plotter.update_plot()
                 axis('off')
                 next_plot += self.plot_interval
+            print('GH done plotting')
+            sys.stdout.flush()
 
             # Handle uplift
             if current_time >= next_uplift:
+                print('GH handing uplift...')
+                sys.stdout.flush()
                 self.uplifter.uplift_interior_nodes(rock_state=self.rock_state)
                 if _RUN_NEW:
+                    print('GH calling ca ulstn')
+                    sys.stdout.flush()
                     self.ca.update_link_states_and_transitions_new(current_time)
+                    print('GH done ca ulstn')
+                    sys.stdout.flush()
                 else:
                     self.ca.update_link_states_and_transitions(current_time)
                 next_uplift += self.uplift_interval

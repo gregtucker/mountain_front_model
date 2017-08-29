@@ -11,6 +11,7 @@ from numpy import zeros, bincount, arange, savetxt, sqrt, log10, mean, arctan, p
 from landlab.io.native_landlab import save_grid
 from landlab.ca.celllab_cts import Transition, CAPlotter
 from matplotlib.pyplot import axis
+import sys
 
 
 class CTSModel(object):
@@ -153,7 +154,13 @@ class CTSModel(object):
 
     def run_for(self, dt):
 
+        print('calling ca.run from cts_model')
+        sys.stdout.flush()
+
         self.ca.run(self.ca.current_time + dt, self.ca.node_state)
+
+        print('done ca.run from cts_model')
+        sys.stdout.flush()
 
 
 if __name__ == '__main__':
