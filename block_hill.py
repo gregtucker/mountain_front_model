@@ -29,6 +29,7 @@ class BlockHill(GrainHill):
                  uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
                  rock_state_for_uplift=7, opt_rock_collapse=False,
                  block_layer_dip_angle=0.0, block_layer_thickness=1.0,
+                 layer_left_x=0.0, y0_top=0.0,
                  show_plots=True, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
@@ -36,21 +37,23 @@ class BlockHill(GrainHill):
                         weathering_rate, uplift_interval, plot_interval,
                         friction_coef, rock_state_for_uplift,
                         opt_rock_collapse, block_layer_dip_angle,
-                        block_layer_thickness, show_plots,
-                        **kwds)
+                        block_layer_thickness, layer_left_x, y0_top,
+                        show_plots, **kwds)
 
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
                    friction_coef, rock_state_for_uplift, opt_rock_collapse,
-                   block_layer_dip_angle, block_layer_thickness,
-                   show_plots, **kwds):
+                   block_layer_dip_angle, block_layer_thickness, layer_left_x,
+                   y0_top, show_plots, **kwds):
         """Initialize the BlockHill model."""
         print('bh initil')
         
         # Set block-related variables
         self.block_layer_dip_angle = block_layer_dip_angle
         self.block_layer_thickness = block_layer_thickness
+        self.layer_left_x = layer_left_x
+        self.y0_top = y0_top
 
         # Call parent class init
         super(BlockHill, self).initialize(grid_size=grid_size, 
@@ -72,7 +75,8 @@ class BlockHill(GrainHill):
                                 opt_block_layer=True,
                                 block_ID=BLOCK_ID,
                                 block_layer_dip_angle=block_layer_dip_angle,
-                                block_layer_thickness=block_layer_thickness)
+                                block_layer_thickness=block_layer_thickness,
+                                layer_left_x=layer_left_x, y0_top=y0_top)
         print('bh initil done')
         sys.stdout.flush()
         
