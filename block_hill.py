@@ -47,7 +47,7 @@ class BlockHill(GrainHill):
                    block_layer_dip_angle, block_layer_thickness, layer_left_x,
                    y0_top, show_plots, **kwds):
         """Initialize the BlockHill model."""
-        print('bh initil')
+#        print('bh initil')
         
         # Set block-related variables
         self.block_layer_dip_angle = block_layer_dip_angle
@@ -77,9 +77,9 @@ class BlockHill(GrainHill):
                                 block_layer_dip_angle=block_layer_dip_angle,
                                 block_layer_thickness=block_layer_thickness,
                                 layer_left_x=layer_left_x, y0_top=y0_top)
-        print('bh initil done')
+#        print('bh initil done')
         sys.stdout.flush()
-        
+
     def node_state_dictionary(self):
         """
         Create and return dict of node states.
@@ -115,6 +115,20 @@ class BlockHill(GrainHill):
                                    self.weathering_rate, 'block weathering') )
         xn_list.append( Transition((BLOCK_ID,0,2), (7,0,2),
                                    self.weathering_rate, 'block weathering') )
+
+        # Collision w block
+        xn_list.append( Transition((1,BLOCK_ID,0), (7,BLOCK_ID,0),
+                                   self.settling_rate, 'hit block') )
+        xn_list.append( Transition((2,BLOCK_ID,1), (7,BLOCK_ID,1),
+                                   self.settling_rate, 'hit block') )
+        xn_list.append( Transition((3,BLOCK_ID,2), (7,BLOCK_ID,2),
+                                   self.settling_rate, 'hit block') )
+        xn_list.append( Transition((BLOCK_ID,4,0), (BLOCK_ID,7,0),
+                                   self.settling_rate, 'hit block') )
+        xn_list.append( Transition((BLOCK_ID,5,1), (BLOCK_ID,7,1),
+                                   self.settling_rate, 'hit block') )
+        xn_list.append( Transition((BLOCK_ID,6,2), (BLOCK_ID,7,2),
+                                   self.settling_rate, 'hit block') )
 
         return xn_list
 
