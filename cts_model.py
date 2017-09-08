@@ -25,20 +25,20 @@ class CTSModel(object):
                  grid_orientation='vertical', grid_shape='rect',
                  show_plots=False, cts_type='oriented_hex', 
                  run_duration=1.0, output_interval=1.0e99,
-                 plot_every_transition=False, **kwds):
+                 plot_every_transition=False, initial_state_grid=None, **kwds):
 
         self.initialize(grid_size, report_interval, grid_orientation,
                         grid_shape, show_plots, cts_type, run_duration,
-                        output_interval, plot_every_transition, **kwds)
+                        output_interval, plot_every_transition,
+                        initial_state_grid=None, **kwds)
 
 
     def initialize(self, grid_size=(5, 5), report_interval=5.0,
                  grid_orientation='vertical', grid_shape='rect',
                  show_plots=False, cts_type='oriented_hex', 
                  run_duration=1.0, output_interval=1.0e99,
-                 plot_every_transition=False, **kwds):
-        #print('CTS initlz')
-        #print(kwds)
+                 plot_every_transition=False, initial_state_grid=None, **kwds):
+        """Initialize CTSModel."""
         # Remember the clock time, and calculate when we next want to report
         # progress.
         self.current_real_time = time.time()
@@ -60,8 +60,17 @@ class CTSModel(object):
         ns_dict = self.node_state_dictionary()
 
         # Initialize values of the node-state grid
-        nsg = self.initialize_node_state_grid()
-        
+        if initial_state_grid is None:
+            nsg = self.initialize_node_state_grid()
+        else:
+            try:
+                nsg = initial_state_grid
+                self.grid.at_node['node_state'][:] = nsg
+            except:
+                #TODO: use new Messaging capability
+                print('If initial_state_grid given, must be array of int')
+                raise
+
         # Create the transition list
         xn_list = self.transition_list()
 

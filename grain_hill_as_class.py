@@ -27,23 +27,23 @@ class GrainHill(CTSModel):
                  disturbance_rate=1.0, weathering_rate=1.0, 
                  uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
                  rock_state_for_uplift=7, opt_rock_collapse=False,
-                 show_plots=True, **kwds):
+                 show_plots=True, initial_state_grid=None, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, settling_rate, disturbance_rate,
                         weathering_rate, uplift_interval, plot_interval,
                         friction_coef, rock_state_for_uplift,
-                        opt_rock_collapse, show_plots,
+                        opt_rock_collapse, show_plots, initial_state_grid,
                         **kwds)
 
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
                    friction_coef, rock_state_for_uplift, opt_rock_collapse,
-                   show_plots, **kwds):
+                   show_plots, initial_state_grid, **kwds):
         """Initialize the grain hill model."""
 #        print('GH initlz')
-#        print(kwds)
+#        print(initial_state_grid)
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
@@ -65,6 +65,7 @@ class GrainHill(CTSModel):
                                           cts_type='oriented_hex',
                                           run_duration=run_duration,
                                           output_interval=output_interval,
+                                          initial_state_grid=initial_state_grid,
                                           **kwds)
 
         self.uplifter = LatticeUplifter(self.grid, 
