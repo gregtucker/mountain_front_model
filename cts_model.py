@@ -91,8 +91,8 @@ class CTSModel(object):
         # Initialize graphics
         self._show_plots = show_plots
         if show_plots == True:
-            #print('CTS init plot')
-            #print(kwds)
+            print('CTS init plot')
+            print(kwds)
             self.initialize_plotting(**kwds)
 
 
@@ -163,13 +163,7 @@ class CTSModel(object):
 
     def run_for(self, dt):
 
-        print('calling ca.run from cts_model')
-        sys.stdout.flush()
-
         self.ca.run(self.ca.current_time + dt, self.ca.node_state)
-
-        print('done ca.run from cts_model')
-        sys.stdout.flush()
 
 
 if __name__ == '__main__':

@@ -42,8 +42,7 @@ class GrainHill(CTSModel):
                    friction_coef, rock_state_for_uplift, opt_rock_collapse,
                    show_plots, initial_state_grid, **kwds):
         """Initialize the grain hill model."""
-#        print('GH initlz')
-#        print(initial_state_grid)
+
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
@@ -71,12 +70,6 @@ class GrainHill(CTSModel):
         self.uplifter = LatticeUplifter(self.grid, 
                                         self.grid.at_node['node_state'])
                                         
-#        print '*** GRAIN HILL HAS THIS MANY TRANSITIONS: ***'
-#        print 'trn_id:', self.ca.trn_id.shape
-#        print 'trn_to:', self.ca.trn_to.shape
-#        print 'trn_rate:', self.ca.trn_rate.shape
-#        print 'nls:', self.ca.num_link_states
-
     def node_state_dictionary(self):
         """
         Create and return dict of node states.
@@ -125,12 +118,13 @@ class GrainHill(CTSModel):
         """
 
         # Disturbance rule
-        xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
-        xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
-        xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
-        xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
-        xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
-        xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
+        if d > 0.0:
+            xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
+            xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
+            xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
+            xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
+            xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
+            xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
 
         # Weathering rule
         if w > 0.0:
