@@ -32,6 +32,7 @@ class BlockHill(GrainHill):
                  layer_left_x=0.0, y0_top=0.0,
                  show_plots=True, **kwds):
         """Call the initialize() method."""
+        print('BH__i')
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, settling_rate, disturbance_rate,
                         weathering_rate, uplift_interval, plot_interval,
@@ -47,8 +48,8 @@ class BlockHill(GrainHill):
                    block_layer_dip_angle, block_layer_thickness, layer_left_x,
                    y0_top, show_plots, **kwds):
         """Initialize the BlockHill model."""
-#        print('bh initil')
-        
+        print('bh initil')
+
         # Set block-related variables
         self.block_layer_dip_angle = block_layer_dip_angle
         self.block_layer_thickness = block_layer_thickness
@@ -56,7 +57,7 @@ class BlockHill(GrainHill):
         self.y0_top = y0_top
 
         # Call parent class init
-        super(BlockHill, self).initialize(grid_size=grid_size, 
+        super(BlockHill, self).__init__(grid_size=grid_size, 
                                           report_interval=report_interval, 
                                           run_duration=run_duration,
                                           output_interval=output_interval,
@@ -73,7 +74,7 @@ class BlockHill(GrainHill):
         self.uplifter = LatticeUplifter(self.grid, 
                                 self.grid.at_node['node_state'],
                                 opt_block_layer=True,
-                                block_ID=BLOCK_ID,
+                                block_ID=8,
                                 block_layer_dip_angle=block_layer_dip_angle,
                                 block_layer_thickness=block_layer_thickness,
                                 layer_left_x=layer_left_x, y0_top=y0_top)
@@ -91,9 +92,68 @@ class BlockHill(GrainHill):
         nsd[BLOCK_ID] = 'block'
         return nsd
 
+    def add_weathering_and_disturbance_transitions(self, xn_list, d=0.0, w=0.0,
+                                                   collapse_rate=0.0):
+        """
+        Add transition rules representing weathering and/or grain disturbance
+        to the list, and return the list. Overrides method of same name in
+        GrainHill.
+        
+        Parameters
+        ----------
+        xn_list : list of Transition objects
+            List of objects that encode information about the link-state 
+            transitions. Normally should first be initialized with lattice-grain
+            transition rules, then passed to this function to add rules for
+            weathering and disturbance.
+        d : float (optional)
+            Rate of transition (1/time) from fluid / resting grain pair to
+            mobile-grain / fluid pair, representing grain disturbance.
+        w : float (optional)
+            Rate of transition (1/time) from fluid / rock pair to
+            fluid / resting-grain pair, representing weathering.
+        
+        Returns
+        -------
+        xn_list : list of Transition objects
+            Modified transition list.
+        """
+
+        # Disturbance rule
+        if d > 0.0:
+            xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
+            xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
+            xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
+            xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
+            xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
+            xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
+
+        # Weathering rule
+        if w > 0.0:
+            xn_list.append( Transition((8,0,0), (BLOCK_ID,0,0), w, 'weathering') )
+            xn_list.append( Transition((8,0,1), (BLOCK_ID,0,1), w, 'weathering') )
+            xn_list.append( Transition((8,0,2), (BLOCK_ID,0,2), w, 'weathering') )
+            xn_list.append( Transition((0,8,0), (0,BLOCK_ID,0), w, 'weathering') )
+            xn_list.append( Transition((0,8,1), (0,BLOCK_ID,1), w, 'weathering') )
+            xn_list.append( Transition((0,8,2), (0,BLOCK_ID,2), w, 'weathering') )
+
+            # "Vertical rock collapse" rule: a rock particle overlying air
+            # will collapse, transitioning to a downward-moving grain
+            if collapse_rate > 0.0:
+                xn_list.append( Transition((0,8,0), (0,BLOCK_ID,0), collapse_rate,
+                                           'rock collapse'))
+
+#        if _DEBUG:
+#            print
+#            print 'setup_transition_list(): list has',len(xn_list),'transitions:'
+#            for t in xn_list:
+#                print '  From state',t.from_state,'to state',t.to_state,'at rate',t.rate,'called',t.name
+
+        return xn_list
+
     def add_block_transitions(self, xn_list):
         """Adds transitions for block undermining and weathering."""
-        
+
         # Undermining
         xn_list.append( Transition((0,BLOCK_ID,0), (BLOCK_ID,0,0),
                                    self.settling_rate, 'block settling') )
@@ -139,7 +199,10 @@ class BlockHill(GrainHill):
         xn_list = lattice_grain_transition_list(g=self.settling_rate,
                                                 f=self.friction_coef,
                                                 motion=self.settling_rate)
-        xn_list = super(BlockHill, self).add_weathering_and_disturbance_transitions(xn_list,
+#        xn_list = super(BlockHill, self).add_weathering_and_disturbance_transitions(xn_list,
+#                    self.disturbance_rate, self.weathering_rate,
+#                    collapse_rate=self.collapse_rate)
+        xn_list = self.add_weathering_and_disturbance_transitions(xn_list,
                     self.disturbance_rate, self.weathering_rate,
                     collapse_rate=self.collapse_rate)
         

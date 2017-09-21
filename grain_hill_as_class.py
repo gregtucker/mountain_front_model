@@ -29,20 +29,23 @@ class GrainHill(CTSModel):
                  rock_state_for_uplift=7, opt_rock_collapse=False,
                  show_plots=True, initial_state_grid=None, **kwds):
         """Call the initialize() method."""
-        self.initialize(grid_size, report_interval, run_duration,
+        print("GH__i")
+        import sys
+        sys.stdout.flush()
+        self.initializer(grid_size, report_interval, run_duration,
                         output_interval, settling_rate, disturbance_rate,
                         weathering_rate, uplift_interval, plot_interval,
                         friction_coef, rock_state_for_uplift,
                         opt_rock_collapse, show_plots, initial_state_grid,
                         **kwds)
 
-    def initialize(self, grid_size, report_interval, run_duration,
+    def initializer(self, grid_size, report_interval, run_duration,
                    output_interval, settling_rate, disturbance_rate,
                    weathering_rate, uplift_interval, plot_interval,
                    friction_coef, rock_state_for_uplift, opt_rock_collapse,
                    show_plots, initial_state_grid, **kwds):
         """Initialize the grain hill model."""
-
+        print('GHI')
         self.settling_rate = settling_rate
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
