@@ -119,7 +119,7 @@ class GrainHill(CTSModel):
         xn_list : list of Transition objects
             Modified transition list.
         """
-
+        print('GH xn')
         # Disturbance rule
         if d > 0.0:
             xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
