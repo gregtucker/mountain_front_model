@@ -15,8 +15,6 @@ from matplotlib.pyplot import axis
 from landlab.ca.celllab_cts import Transition
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeUplifter
 
-# Temporary: for debug and dev
-from landlab.ca.celllab_cts import _RUN_NEW
 
 class GrainHill(CTSModel):
     """
@@ -234,10 +232,6 @@ class GrainHill(CTSModel):
             # Handle uplift
             if current_time >= next_uplift:
                 self.uplifter.uplift_interior_nodes(self.ca, rock_state=self.rock_state)
-                if _RUN_NEW:
-                    self.ca.update_link_states_and_transitions_new(current_time)
-                else:
-                    self.ca.update_link_states_and_transitions(current_time)
                 next_uplift += self.uplift_interval
         
     def get_profile_and_soil_thickness(self, grid, data):
