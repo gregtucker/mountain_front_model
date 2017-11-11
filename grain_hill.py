@@ -231,7 +231,8 @@ class GrainHill(CTSModel):
 
             # Handle uplift
             if current_time >= next_uplift:
-                self.uplifter.uplift_interior_nodes(self.ca, rock_state=self.rock_state)
+                self.uplifter.uplift_interior_nodes(self.ca, current_time,
+                                                    rock_state=self.rock_state)
                 next_uplift += self.uplift_interval
         
     def get_profile_and_soil_thickness(self, grid, data):
