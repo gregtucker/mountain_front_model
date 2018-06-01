@@ -6,7 +6,7 @@ Model of normal-fault facet evolution using CTS lattice grain approach.
 _DEBUG = False
 
 import sys
-from cts_model import CTSModel
+from grainhill import CTSModel
 from grainhill.lattice_grain import (lattice_grain_node_states,
                                       lattice_grain_transition_list)
 import time
@@ -174,20 +174,6 @@ class GrainFacetSimulator(CTSModel):
         current_time = 0.0
         while current_time < self.run_duration:
             
-            print('\n Current time: ' + str(current_time))
-            print('Node state:')
-            print(self.ca.node_state)
-            for lnk in range(self.grid.number_of_links):
-                if self.grid.status_at_link[lnk] == 0:
-                    print((lnk, self.grid.node_at_link_tail[lnk], 
-                           self.grid.node_at_link_head[lnk],
-                           self.ca.node_state[self.grid.node_at_link_tail[lnk]], 
-                           self.ca.node_state[self.grid.node_at_link_head[lnk]],
-                           self.ca.link_state[lnk],self.ca.next_update[lnk],
-                           self.ca.next_trn_id[lnk]))
-            print('PQ:')
-            print(self.ca.priority_queue._queue)
-
             # Figure out what time to run to this iteration
             next_pause = min(next_output, next_plot)
             next_pause = min(next_pause, next_uplift)
@@ -203,9 +189,9 @@ class GrainFacetSimulator(CTSModel):
     
             # Run the model forward in time until the next output step
             print('Running to...' + str(next_pause))
-            self.ca.run(next_pause, self.ca.node_state, plot_each_transition=True, plotter=self.ca_plotter)
+            self.ca.run(next_pause, self.ca.node_state)
             current_time = next_pause
-            
+
             # Handle output to file
             if current_time >= next_output:
                 #write_output(hmg, filenm, output_iteration)
@@ -224,12 +210,9 @@ class GrainFacetSimulator(CTSModel):
             if current_time >= next_uplift:
                 self.uplifter.do_offset(ca=self.ca, current_time=current_time,
                                         rock_state=8)
-                #self.ca.update_link_states_and_transitions(current_time)
                 next_uplift += self.uplift_interval
-                print('***JUST DID UPLIFT***')
-                
-    
-    
+
+
     def nodes_in_column(self, col, num_rows, num_cols):
         """Return array of node IDs in given column.
         
@@ -249,7 +232,7 @@ class GrainFacetSimulator(CTSModel):
         base_node = (col // 2) + (col % 2) * ((num_cols + 1) // 2)
         num_nodes = num_rows * num_cols
         return np.arange(base_node, num_nodes, num_cols)
-        
+
 
     def get_profile_and_soil_thickness(self):
         """Calculate and return the topographic profile and the regolith
@@ -272,6 +255,24 @@ class GrainFacetSimulator(CTSModel):
             elev[c] = e
             soil[c] = s
         return elev, soil
+    
+    
+    def report_info_for_debug(self, current_time):
+        """Print out various bits of data, for testing and debugging."""
+        print('\n Current time: ' + str(current_time))
+        print('Node state:')
+        print(self.ca.node_state)
+        for lnk in range(self.grid.number_of_links):
+            if self.grid.status_at_link[lnk] == 0:
+                print((lnk, self.grid.node_at_link_tail[lnk], 
+                       self.grid.node_at_link_head[lnk],
+                       self.ca.node_state[self.grid.node_at_link_tail[lnk]], 
+                       self.ca.node_state[self.grid.node_at_link_head[lnk]],
+                       self.ca.link_state[lnk],self.ca.next_update[lnk],
+                       self.ca.next_trn_id[lnk]))
+        print('PQ:')
+        print(self.ca.priority_queue._queue)
+
 
 
 def get_params_from_input_file(filename):
