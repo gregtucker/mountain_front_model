@@ -6,7 +6,7 @@ number_of_node_columns:
 report_interval: time interval for reporting output to user (real-time seconds)
 5.0
 run_duration:
-120.0
+150.0
 output_interval:
 1.0e99
 disturbance_rate:
@@ -21,3 +21,6 @@ friction_coef:
 1.0
 fault_x:
 8.0
+cell_width:
+1.0
+

@@ -3,17 +3,18 @@
 Model of normal-fault facet evolution using CTS lattice grain approach.
 """
 
-_DEBUG = False
-
 import sys
 from grainhill import CTSModel
 from grainhill.lattice_grain import (lattice_grain_node_states,
-                                      lattice_grain_transition_list)
+                                     lattice_grain_transition_list)
 import time
 import numpy as np
-from matplotlib.pyplot import axis, savefig
 from landlab.ca.celllab_cts import Transition
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeNormalFault
+
+
+SECONDS_PER_YEAR = 365.25 * 24 * 3600
+_DEBUG = False
 
 
 class GrainFacetSimulator(CTSModel):
@@ -23,23 +24,26 @@ class GrainFacetSimulator(CTSModel):
     def __init__(self, grid_size, report_interval=1.0e8, run_duration=1.0, 
                  output_interval=1.0e99, disturbance_rate=1.0e-6,
                  weathering_rate=1.0e-6, uplift_interval=1.0,
-                 plot_interval=1.0e99, friction_coef=0.3, fault_x=1.0, **kwds):
+                 plot_interval=1.0e99, friction_coef=0.3, fault_x=1.0, 
+                 cell_width=1.0, grav_accel=9.8, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, disturbance_rate, weathering_rate,
                         uplift_interval, plot_interval, friction_coef, fault_x,
-                        **kwds)
+                        cell_width, grav_accel, **kwds)
         
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, disturbance_rate, weathering_rate, 
                    uplift_interval, plot_interval, friction_coef, fault_x,
-                   **kwds):
+                   cell_width, grav_accel, **kwds):
         """Initialize the grain hill model."""
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
         self.uplift_interval = uplift_interval
         self.plot_interval = plot_interval
         self.friction_coef = friction_coef
+
+        self.settling_rate = calculate_settling_rate(cell_width, grav_accel)
 
         # Call base class init
         super(GrainFacetSimulator, self).initialize(grid_size=grid_size, 
@@ -70,16 +74,18 @@ class GrainFacetSimulator(CTSModel):
         """
         Make and return list of Transition object.
         """
-        xn_list = lattice_grain_transition_list(g=1.0, f=self.friction_coef)
+        xn_list = lattice_grain_transition_list(g=self.settling_rate,
+                                                f=self.friction_coef,
+                                                motion=self.settling_rate)
         xn_list = self.add_weathering_and_disturbance_transitions(xn_list,
                     self.disturbance_rate, self.weathering_rate)
         return xn_list
-        
+
     def add_weathering_and_disturbance_transitions(self, xn_list, d=0.0, w=0.0):
         """
         Add transition rules representing weathering and/or grain disturbance
         to the list, and return the list.
-        
+
         Parameters
         ----------
         xn_list : list of Transition objects
@@ -130,12 +136,13 @@ class GrainFacetSimulator(CTSModel):
         
         Examples
         --------
+        >>> from grainhill import GrainHill
         >>> gh = GrainHill((5, 7))
         >>> gh.grid.at_node['node_state']        
-        array([8, 7, 7, 8, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        array([8, 7, 7, 8, 7, 7, 7, 0, 7, 7, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0,
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         """
-        
+
         # For shorthand, get a reference to the node-state grid
         nsg = self.grid.at_node['node_state']
 
@@ -156,7 +163,6 @@ class GrainFacetSimulator(CTSModel):
         nsg[bottom_right] = 8
 
         return nsg
-
 
     def run(self):
         """Run the model."""
@@ -194,24 +200,18 @@ class GrainFacetSimulator(CTSModel):
 
             # Handle output to file
             if current_time >= next_output:
-                #write_output(hmg, filenm, output_iteration)
-                #output_iteration += 1
                 next_output += self.output_interval
 
             # Handle plotting on display
             if current_time >= next_plot:
-                #node_state_grid[hmg.number_of_node_rows-1] = 8
                 self.ca_plotter.update_plot()
-                axis('off')
                 next_plot += self.plot_interval
-                savefig('test' + str(int(current_time)) + '.png')
 
             # Handle fault slip
             if current_time >= next_uplift:
                 self.uplifter.do_offset(ca=self.ca, current_time=current_time,
                                         rock_state=8)
                 next_uplift += self.uplift_interval
-
 
     def nodes_in_column(self, col, num_rows, num_cols):
         """Return array of node IDs in given column.
@@ -232,7 +232,6 @@ class GrainFacetSimulator(CTSModel):
         base_node = (col // 2) + (col % 2) * ((num_cols + 1) // 2)
         num_nodes = num_rows * num_cols
         return np.arange(base_node, num_nodes, num_cols)
-
 
     def get_profile_and_soil_thickness(self):
         """Calculate and return the topographic profile and the regolith
@@ -255,8 +254,7 @@ class GrainFacetSimulator(CTSModel):
             elev[c] = e
             soil[c] = s
         return elev, soil
-    
-    
+
     def report_info_for_debug(self, current_time):
         """Print out various bits of data, for testing and debugging."""
         print('\n Current time: ' + str(current_time))
@@ -274,7 +272,6 @@ class GrainFacetSimulator(CTSModel):
         print(self.ca.priority_queue._queue)
 
 
-
 def get_params_from_input_file(filename):
     """Fetch parameter values from input file."""
     from landlab.core import load_params
@@ -283,6 +280,30 @@ def get_params_from_input_file(filename):
 
     return mpd_params
 
+def calculate_settling_rate(cell_width, grav_accel):
+    """
+    Calculate and store gravitational settling rate constant, based on
+    given cell size and gravitational acceleration.
+    
+    Parameters
+    ----------
+    cell_width : float
+        Width of cells, m
+    grav_accel : float
+        Gravitational acceleration, m/s^2
+
+    Notes
+    -----
+    Returns settling rate in yr^-1, with the conversion from s to yr 
+    calculated using 1 year = 365.25 days.
+    
+    Examples
+    --------
+    >>> round(calculate_settling_rate(1.0, 9.8))
+    69855725.0
+    """
+    time_to_settle_one_cell = np.sqrt(2.0 * cell_width / grav_accel)
+    return SECONDS_PER_YEAR / time_to_settle_one_cell
 
 def main(params):
     """Initialize model with dict of params then run it."""
@@ -290,6 +311,7 @@ def main(params):
                  int(params['number_of_node_columns']))
     grain_facet_model = GrainFacetSimulator(grid_size, **params)
     grain_facet_model.run()
+
 
 
 if __name__=='__main__':
