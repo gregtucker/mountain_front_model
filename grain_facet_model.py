@@ -4,7 +4,7 @@ Model of normal-fault facet evolution using CTS lattice grain approach.
 """
 
 import sys
-from grainhill import CTSModel
+from grainhill import CTSModel, plot_hill
 from grainhill.lattice_grain import (lattice_grain_node_states,
                                      lattice_grain_transition_list)
 import time
@@ -25,17 +25,17 @@ class GrainFacetSimulator(CTSModel):
                  output_interval=1.0e99, disturbance_rate=1.0e-6,
                  weathering_rate=1.0e-6, uplift_interval=1.0,
                  plot_interval=1.0e99, friction_coef=0.3, fault_x=1.0, 
-                 cell_width=1.0, grav_accel=9.8, **kwds):
+                 cell_width=1.0, grav_accel=9.8, plot_file_name=None, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, disturbance_rate, weathering_rate,
                         uplift_interval, plot_interval, friction_coef, fault_x,
-                        cell_width, grav_accel, **kwds)
-        
+                        cell_width, grav_accel, plot_file_name, **kwds)
+
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, disturbance_rate, weathering_rate, 
                    uplift_interval, plot_interval, friction_coef, fault_x,
-                   cell_width, grav_accel, **kwds):
+                   cell_width, grav_accel, plot_file_name=None, **kwds):
         """Initialize the grain hill model."""
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
@@ -61,10 +61,15 @@ class GrainFacetSimulator(CTSModel):
                                            grid=self.grid, 
                                            node_state=ns)
 
+        self.plot_file_name = plot_file_name
+        if plot_file_name is not None:
+            self.plot_number = 0
+            self.plot_to_file()
+
     def node_state_dictionary(self):
         """
         Create and return dict of node states.
-        
+
         Overrides base-class method. Here, we simply call on a function in
         the lattice_grain module.
         """
@@ -99,14 +104,13 @@ class GrainFacetSimulator(CTSModel):
         w : float (optional)
             Rate of transition (1/time) from fluid / rock pair to
             fluid / resting-grain pair, representing weathering.
-        
-        
+
         Returns
         -------
         xn_list : list of Transition objects
             Modified transition list.
         """
-        
+
         # Disturbance rule
         xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
         xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
@@ -124,16 +128,19 @@ class GrainFacetSimulator(CTSModel):
         xn_list.append( Transition((0,8,2), (0,7,2), w, 'weathering') )
 
         if _DEBUG:
-            print
-            print 'setup_transition_list(): list has',len(xn_list),'transitions:'
+            print('')
+            print('setup_transition_list(): list has ' + str(len(xn_list))
+                  + ' transitions:')
             for t in xn_list:
-                print '  From state',t.from_state,'to state',t.to_state,'at rate',t.rate,'called',t.name
-            
+                print('  From state ' + str(t.from_state) + ' to state '
+                      + str(t.to_state) + ' at rate ' + str(t.rate) + 'called'
+                      + str(t.name))
+
         return xn_list
 
     def initialize_node_state_grid(self):
         """Set up initial node states.
-        
+
         Examples
         --------
         >>> from grainhill import GrainHill
@@ -179,12 +186,12 @@ class GrainFacetSimulator(CTSModel):
 
         current_time = 0.0
         while current_time < self.run_duration:
-            
+
             # Figure out what time to run to this iteration
             next_pause = min(next_output, next_plot)
             next_pause = min(next_pause, next_uplift)
             next_pause = min(next_pause, self.run_duration)
-    
+
             # Once in a while, print out simulation and real time to let the user
             # know that the sim is running ok
             current_real_time = time.time()
@@ -192,7 +199,7 @@ class GrainFacetSimulator(CTSModel):
                 print('Current sim time' + str(current_time) + '(' + \
                       str(100 * current_time / self.run_duration) + '%)')
                 next_report = current_real_time + self.report_interval
-    
+
             # Run the model forward in time until the next output step
             print('Running to...' + str(next_pause))
             self.ca.run(next_pause, self.ca.node_state)
@@ -205,6 +212,8 @@ class GrainFacetSimulator(CTSModel):
             # Handle plotting on display
             if current_time >= next_plot:
                 self.ca_plotter.update_plot()
+                if self.plot_file_name is not None:
+                    self.plot_to_file()
                 next_plot += self.plot_interval
 
             # Handle fault slip
@@ -270,6 +279,12 @@ class GrainFacetSimulator(CTSModel):
                        self.ca.next_trn_id[lnk]))
         print('PQ:')
         print(self.ca.priority_queue._queue)
+        
+    def plot_to_file(self):
+        """Plot profile of hill to file."""
+        fname = self.plot_file_name + str(self.plot_number).zfill(4) + '.png'
+        plot_hill(self.ca.grid, filename=fname)
+        self.plot_number += 1
 
 
 def get_params_from_input_file(filename):
