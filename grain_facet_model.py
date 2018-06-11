@@ -9,6 +9,7 @@ from grainhill.lattice_grain import (lattice_grain_node_states,
                                      lattice_grain_transition_list)
 import time
 import numpy as np
+from landlab import CLOSED_BOUNDARY
 from landlab.ca.celllab_cts import Transition
 from landlab.ca.boundaries.hex_lattice_tectonicizer import LatticeNormalFault
 
@@ -55,6 +56,11 @@ class GrainFacetSimulator(CTSModel):
                                           run_duration=run_duration,
                                           output_interval=output_interval,
                                           plot_every_transition=False)
+
+        # Close top and right edges so as to avoid boundary bug issue
+        for edge in (self.grid.nodes_at_right_edge,
+                     self.grid.nodes_at_top_edge):
+            self.grid.status_at_node[edge] = CLOSED_BOUNDARY
 
         ns = self.grid.at_node['node_state']
         self.uplifter = LatticeNormalFault(fault_x_intercept=fault_x,
