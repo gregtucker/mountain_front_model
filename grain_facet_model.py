@@ -23,23 +23,27 @@ class GrainFacetSimulator(CTSModel):
     Model facet-slope evolution with 60-degree normal-fault slip.
     """
     def __init__(self, grid_size, report_interval=1.0e8, run_duration=1.0, 
-                 output_interval=1.0e99, disturbance_rate=1.0e-6,
-                 weathering_rate=1.0e-6, uplift_interval=1.0,
-                 plot_interval=1.0e99, friction_coef=0.3, fault_x=1.0, 
-                 cell_width=1.0, grav_accel=9.8, plot_file_name=None, **kwds):
+                 output_interval=1.0e99, disturbance_rate=0.0,
+                 weathering_rate=0.0, dissolution_rate=0.0,
+                 uplift_interval=1.0, plot_interval=1.0e99, friction_coef=0.3,
+                 fault_x=1.0, cell_width=1.0, grav_accel=9.8,
+                 plot_file_name=None, **kwds):
         """Call the initialize() method."""
         self.initialize(grid_size, report_interval, run_duration,
                         output_interval, disturbance_rate, weathering_rate,
-                        uplift_interval, plot_interval, friction_coef, fault_x,
-                        cell_width, grav_accel, plot_file_name, **kwds)
+                        dissolution_rate, uplift_interval, plot_interval,
+                        friction_coef, fault_x,cell_width, grav_accel,
+                        plot_file_name, **kwds)
 
     def initialize(self, grid_size, report_interval, run_duration,
                    output_interval, disturbance_rate, weathering_rate, 
-                   uplift_interval, plot_interval, friction_coef, fault_x,
-                   cell_width, grav_accel, plot_file_name=None, **kwds):
+                   dissolution_rate, uplift_interval, plot_interval,
+                   friction_coef, fault_x, cell_width, grav_accel,
+                   plot_file_name=None, **kwds):
         """Initialize the grain hill model."""
         self.disturbance_rate = disturbance_rate
         self.weathering_rate = weathering_rate
+        self.dissolution_rate = dissolution_rate
         self.uplift_interval = uplift_interval
         self.plot_interval = plot_interval
         self.friction_coef = friction_coef
@@ -89,10 +93,12 @@ class GrainFacetSimulator(CTSModel):
                                                 f=self.friction_coef,
                                                 motion=self.settling_rate)
         xn_list = self.add_weathering_and_disturbance_transitions(xn_list,
-                    self.disturbance_rate, self.weathering_rate)
+                    self.disturbance_rate, self.weathering_rate,
+                    self.dissolution_rate)
         return xn_list
 
-    def add_weathering_and_disturbance_transitions(self, xn_list, d=0.0, w=0.0):
+    def add_weathering_and_disturbance_transitions(self, xn_list, d=0.0, w=0.0,
+                                                   diss=0.0):
         """
         Add transition rules representing weathering and/or grain disturbance
         to the list, and return the list.
@@ -104,12 +110,15 @@ class GrainFacetSimulator(CTSModel):
             transitions. Normally should first be initialized with lattice-grain
             transition rules, then passed to this function to add rules for
             weathering and disturbance.
-        d : float (optional)
+        d : float (optional, default=0.0)
             Rate of transition (1/time) from fluid / resting grain pair to
             mobile-grain / fluid pair, representing grain disturbance.
-        w : float (optional)
+        w : float (optional, default=0.0)
             Rate of transition (1/time) from fluid / rock pair to
             fluid / resting-grain pair, representing weathering.
+        diss : float (optional, default=0.0)
+            Dissolution: rate of transition from fluid / rock pair to 
+            fluid / fluid pair.
 
         Returns
         -------
@@ -118,20 +127,31 @@ class GrainFacetSimulator(CTSModel):
         """
 
         # Disturbance rule
-        xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
-        xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
-        xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
-        xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
-        xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
-        xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
+        if d > 0.0:
+            xn_list.append( Transition((7,0,0), (0,1,0), d, 'disturbance') )
+            xn_list.append( Transition((7,0,1), (0,2,1), d, 'disturbance') )
+            xn_list.append( Transition((7,0,2), (0,3,2), d, 'disturbance') )
+            xn_list.append( Transition((0,7,0), (4,0,0), d, 'disturbance') )
+            xn_list.append( Transition((0,7,1), (5,0,1), d, 'disturbance') )
+            xn_list.append( Transition((0,7,2), (6,0,2), d, 'disturbance') )
 
         # Weathering rule
-        xn_list.append( Transition((8,0,0), (7,0,0), w, 'weathering') )
-        xn_list.append( Transition((8,0,1), (7,0,1), w, 'weathering') )
-        xn_list.append( Transition((8,0,2), (7,0,2), w, 'weathering') )
-        xn_list.append( Transition((0,8,0), (0,7,0), w, 'weathering') )
-        xn_list.append( Transition((0,8,1), (0,7,1), w, 'weathering') )
-        xn_list.append( Transition((0,8,2), (0,7,2), w, 'weathering') )
+        if w > 0.0:
+            xn_list.append( Transition((8,0,0), (7,0,0), w, 'weathering') )
+            xn_list.append( Transition((8,0,1), (7,0,1), w, 'weathering') )
+            xn_list.append( Transition((8,0,2), (7,0,2), w, 'weathering') )
+            xn_list.append( Transition((0,8,0), (0,7,0), w, 'weathering') )
+            xn_list.append( Transition((0,8,1), (0,7,1), w, 'weathering') )
+            xn_list.append( Transition((0,8,2), (0,7,2), w, 'weathering') )
+
+        # Dissolution rule
+        if diss > 0.0:
+            xn_list.append( Transition((8,0,0), (0,0,0), diss, 'dissolution') )
+            xn_list.append( Transition((8,0,1), (0,0,1), diss, 'dissolution') )
+            xn_list.append( Transition((8,0,2), (0,0,2), diss, 'dissolution') )
+            xn_list.append( Transition((0,8,0), (0,0,0), diss, 'dissolution') )
+            xn_list.append( Transition((0,8,1), (0,0,1), diss, 'dissolution') )
+            xn_list.append( Transition((0,8,2), (0,0,2), diss, 'dissolution') )
 
         if _DEBUG:
             print('')
