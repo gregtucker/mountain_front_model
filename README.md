@@ -1,3 +1,5 @@
+## (note: stuff in this repo now subsumed into GrainHill)
+
 # mountain_front_model
 Cellular automaton model of normal-fault facet morphology and evolution
 
